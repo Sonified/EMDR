@@ -179,6 +179,7 @@ let transitionStart = null;
 let transitionFrom = 0;
 let transitionType = null; // 'rampUp' or 'rampDown'
 const RAMP_DURATION = 800; // ms for ramp up/down
+let initialDirection = 1; // 1 = start right, -1 = start left
 
 const playPauseBtn = document.getElementById('playPauseBtn');
 
@@ -301,27 +302,32 @@ function calculateBallPosition(timestamp) {
     let targetPosition;
     // Calculate position based on motion type
     if (settings.motionType === 'sine') {
-        // Sine wave - smooth easing at edges
+        // Sine wave - starts from 0, direction determined by initialDirection
         const phase = (elapsed / period) * Math.PI * 2;
-        targetPosition = Math.sin(phase);
+        targetPosition = Math.sin(phase) * initialDirection;
     } else {
-        // Linear - triangle wave, constant speed
+        // Linear - triangle wave starting from 0
+        // Goes: 0 -> 1 -> 0 -> -1 -> 0 (one full cycle)
         const cycleProgress = (elapsed % period) / period;
-        if (cycleProgress < 0.5) {
-            targetPosition = -1 + (cycleProgress * 4); // -1 to 1
+        let rawPosition;
+        if (cycleProgress < 0.25) {
+            rawPosition = cycleProgress * 4; // 0 to 1
+        } else if (cycleProgress < 0.75) {
+            rawPosition = 1 - ((cycleProgress - 0.25) * 4); // 1 to -1
         } else {
-            targetPosition = 1 - ((cycleProgress - 0.5) * 4); // 1 to -1
+            rawPosition = -1 + ((cycleProgress - 0.75) * 4); // -1 to 0
         }
+        targetPosition = rawPosition * initialDirection;
     }
 
-    // Handle ramp up transition
+    // Handle ramp up transition - smoothly ramp amplitude from 0 to full
     if (isTransitioning && transitionType === 'rampUp') {
         const transitionElapsed = timestamp - transitionStart;
         const progress = Math.min(transitionElapsed / RAMP_DURATION, 1);
         const eased = easeInOutCubic(progress);
 
-        // Blend from starting position to target position
-        ballPosition = transitionFrom + (targetPosition - transitionFrom) * eased;
+        // Scale the amplitude during ramp up
+        ballPosition = targetPosition * eased;
 
         if (progress >= 1) {
             isTransitioning = false;
@@ -461,19 +467,17 @@ function togglePlayPause() {
         if (audioContext && audioContext.state === 'suspended') {
             audioContext.resume();
         }
+
+        // Start fresh wave - always start going right
+        initialDirection = 1;
+        startTime = null; // Reset so wave starts fresh
+        pausedAt = null;
+
         // Start ramp up transition
         isTransitioning = true;
         transitionType = 'rampUp';
         transitionStart = performance.now();
-        transitionFrom = ballPosition;
-
-        // Resuming: adjust startTime to account for pause duration
-        if (pausedAt !== null && startTime !== null) {
-            startTime = performance.now() - pausedAt;
-        } else {
-            startTime = null; // Reset to sync with current position
-        }
-        pausedAt = null;
+        transitionFrom = 0;
     } else {
         // Start ramp down transition (return to center)
         isTransitioning = true;
