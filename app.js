@@ -59,12 +59,12 @@ function initThreeJS() {
                 sum += (r * r) / (dist * dist + 1.0);
             }
 
-            // Threshold and smooth edge
-            float threshold = 1.0;
-            float edge = smoothstep(threshold - 0.3, threshold + 0.1, sum);
+            // Threshold and smooth edge - higher threshold = tighter balls
+            float threshold = 1.5;
+            float edge = smoothstep(threshold - 0.2, threshold + 0.05, sum);
 
-            // Add some glow
-            float glow = smoothstep(0.0, threshold, sum) * 0.3;
+            // Add subtle glow
+            float glow = smoothstep(0.0, threshold, sum) * 0.15;
 
             vec3 color = ballColor;
             float alpha = (edge + glow) * opacity;
@@ -110,7 +110,8 @@ function updateFluidShader() {
     for (let i = 0; i < trailHistory.length; i++) {
         const progress = i / trailHistory.length;
         positions.push(new THREE.Vector2(trailHistory[i].x, window.innerHeight - trailHistory[i].y));
-        sizes.push(settings.ballSize * (0.3 + progress * 0.7));
+        // Smaller radii for tighter metaballs
+        sizes.push(settings.ballSize * (0.15 + progress * 0.35));
     }
 
     // Pad arrays to MAX_METABALLS
