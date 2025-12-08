@@ -15,7 +15,7 @@ const ballSizeInput = document.getElementById('ballSize');
 const ballColorInput = document.getElementById('ballColor');
 const ballStyleSelect = document.getElementById('ballStyle');
 const glowEnabledInput = document.getElementById('glowEnabled');
-const trailEnabledInput = document.getElementById('trailEnabled');
+const trailStyleSelect = document.getElementById('trailStyle');
 const bgColorInput = document.getElementById('bgColor');
 const audioEnabledInput = document.getElementById('audioEnabled');
 const frequencyInput = document.getElementById('frequency');
@@ -28,10 +28,9 @@ let settings = {
     ballColor: '#db4343',
     ballStyle: 'sphere',
     glowEnabled: false,
-    trailEnabled: false,
-    trailLength: 20,
-    trailOpacity: 50,
-    trail3D: false,
+    trailStyle: 'none',
+    trailLength: 15,
+    trailOpacity: 15,
     bgColor: '#000000',
     audioEnabled: false,
     frequency: 110
@@ -181,7 +180,7 @@ function draw() {
     const ballY = height / 2;
 
     // Update trail history
-    if (settings.trailEnabled) {
+    if (settings.trailStyle !== 'none') {
         trailHistory.push({ x: ballX, y: ballY });
         // Keep positions based on trail length setting
         while (trailHistory.length > settings.trailLength) {
@@ -192,29 +191,47 @@ function draw() {
     }
 
     // Draw motion trail
-    if (settings.trailEnabled && trailHistory.length > 1) {
+    if (settings.trailStyle !== 'none' && trailHistory.length > 1) {
         const rgb = hexToRgb(settings.ballColor);
         const maxAlpha = settings.trailOpacity / 100;
-        for (let i = 0; i < trailHistory.length - 1; i++) {
-            const progress = i / trailHistory.length;
-            const alpha = progress * maxAlpha;
 
-            let trailRadius, trailY;
-            if (settings.trail3D) {
-                // 3D effect: trail goes back into the screen
-                const depth = 1 - progress; // 0 = front, 1 = back
-                trailRadius = ballRadius * (0.2 + progress * 0.8) * (0.3 + progress * 0.7);
-                // Move up towards vanishing point as depth increases
-                trailY = trailHistory[i].y - (depth * ballRadius * 1.5);
-            } else {
-                trailRadius = ballRadius * (0.3 + progress * 0.7);
-                trailY = trailHistory[i].y;
+        if (settings.trailStyle === 'fluid') {
+            // Fluid/metaball effect - draw overlapping circles with blur
+            ctx.save();
+            ctx.filter = `blur(${ballRadius * 0.3}px)`;
+            for (let i = 0; i < trailHistory.length - 1; i++) {
+                const progress = i / trailHistory.length;
+                const alpha = progress * maxAlpha * 1.5;
+                const trailRadius = ballRadius * (0.4 + progress * 0.6);
+
+                ctx.beginPath();
+                ctx.arc(trailHistory[i].x, trailHistory[i].y, trailRadius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+                ctx.fill();
             }
+            ctx.restore();
+        } else {
+            for (let i = 0; i < trailHistory.length - 1; i++) {
+                const progress = i / trailHistory.length;
+                const alpha = progress * maxAlpha;
 
-            ctx.beginPath();
-            ctx.arc(trailHistory[i].x, trailY, trailRadius, 0, Math.PI * 2);
-            ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
-            ctx.fill();
+                let trailRadius, trailY;
+                if (settings.trailStyle === '3d') {
+                    // 3D effect: trail goes back into the screen
+                    const depth = 1 - progress; // 0 = front, 1 = back
+                    trailRadius = ballRadius * (0.2 + progress * 0.8) * (0.3 + progress * 0.7);
+                    // Move up towards vanishing point as depth increases
+                    trailY = trailHistory[i].y - (depth * ballRadius * 1.5);
+                } else {
+                    trailRadius = ballRadius * (0.3 + progress * 0.7);
+                    trailY = trailHistory[i].y;
+                }
+
+                ctx.beginPath();
+                ctx.arc(trailHistory[i].x, trailY, trailRadius, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+                ctx.fill();
+            }
         }
     }
 
@@ -355,25 +372,21 @@ glowEnabledInput.addEventListener('change', (e) => {
     settings.glowEnabled = e.target.checked;
 });
 
-trailEnabledInput.addEventListener('change', (e) => {
-    settings.trailEnabled = e.target.checked;
+trailStyleSelect.addEventListener('change', (e) => {
+    settings.trailStyle = e.target.value;
     document.querySelectorAll('.trail-options').forEach(el => {
-        el.classList.toggle('hidden', !e.target.checked);
+        el.classList.toggle('hidden', e.target.value === 'none');
     });
 });
 
 document.getElementById('trailLength').addEventListener('input', (e) => {
-    settings.trailLength = parseInt(e.target.value) || 20;
+    settings.trailLength = parseInt(e.target.value) || 15;
     document.getElementById('trailLengthValue').textContent = settings.trailLength;
 });
 
 document.getElementById('trailOpacity').addEventListener('input', (e) => {
-    settings.trailOpacity = parseInt(e.target.value) || 50;
+    settings.trailOpacity = parseInt(e.target.value) || 15;
     document.getElementById('trailOpacityValue').textContent = settings.trailOpacity;
-});
-
-document.getElementById('trail3D').addEventListener('change', (e) => {
-    settings.trail3D = e.target.checked;
 });
 
 bgColorInput.addEventListener('input', (e) => {

@@ -66,27 +66,23 @@
         </div>
 
         <div class="setting-group">
-            <label for="trailEnabled">
-                <input type="checkbox" id="trailEnabled">
-                Motion Trail
-            </label>
+            <label for="trailStyle">Trail Effect</label>
+            <select id="trailStyle">
+                <option value="none">None</option>
+                <option value="basic">Basic</option>
+                <option value="3d">3D Depth</option>
+                <option value="fluid">Fluid</option>
+            </select>
         </div>
 
         <div class="setting-group trail-options hidden">
-            <label for="trailLength">Trail Length: <span id="trailLengthValue">20</span></label>
-            <input type="range" id="trailLength" min="5" max="50" value="20">
+            <label for="trailLength">Trail Length: <span id="trailLengthValue">15</span></label>
+            <input type="range" id="trailLength" min="5" max="50" value="15">
         </div>
 
         <div class="setting-group trail-options hidden">
-            <label for="trailOpacity">Trail Opacity: <span id="trailOpacityValue">50</span>%</label>
-            <input type="range" id="trailOpacity" min="10" max="100" value="50">
-        </div>
-
-        <div class="setting-group trail-options hidden">
-            <label for="trail3D">
-                <input type="checkbox" id="trail3D">
-                3D Trail
-            </label>
+            <label for="trailOpacity">Trail Opacity: <span id="trailOpacityValue">15</span>%</label>
+            <input type="range" id="trailOpacity" min="10" max="100" value="15">
         </div>
 
         <div class="setting-group">
