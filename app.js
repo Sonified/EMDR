@@ -159,7 +159,7 @@ let settings = {
     trailLength: 15,
     trailOpacity: 15,
     bgColor: '#000000',
-    audioEnabled: false,
+    audioEnabled: true,
     frequency: 110
 };
 
@@ -170,7 +170,7 @@ let ballPosition = 0; // -1 to 1 (left to right)
 let startTime = null;
 let mouseTimeout = null;
 let colorPickerOpen = false;
-let isPlaying = true;
+let isPlaying = false;
 let pausedAt = null;
 
 const playPauseBtn = document.getElementById('playPauseBtn');
@@ -399,11 +399,25 @@ function draw() {
 }
 
 // Toggle play/pause
+const startOverlay = document.getElementById('startOverlay');
 function togglePlayPause() {
     isPlaying = !isPlaying;
     playPauseBtn.textContent = isPlaying ? '❚❚' : '▶';
 
+    // Hide start overlay on first play
+    if (isPlaying && startOverlay) {
+        startOverlay.style.display = 'none';
+    }
+
     if (isPlaying) {
+        // Initialize audio on first play if enabled
+        if (settings.audioEnabled && !audioContext) {
+            initAudio();
+            startAudioLoop();
+        }
+        if (audioContext && audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
         // Resuming: adjust startTime to account for pause duration
         if (pausedAt !== null && startTime !== null) {
             startTime = performance.now() - pausedAt;
@@ -587,8 +601,12 @@ document.querySelectorAll('.copy-btn').forEach(btn => {
     });
 });
 
-// Play/pause button click
+// Play/pause button click/touch
 playPauseBtn.addEventListener('click', togglePlayPause);
+playPauseBtn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    togglePlayPause();
+});
 
 // Space bar toggles play/pause
 document.addEventListener('keydown', (e) => {
@@ -600,7 +618,7 @@ document.addEventListener('keydown', (e) => {
 
 // Audio button
 const audioBtn = document.getElementById('audioBtn');
-audioBtn.addEventListener('click', () => {
+function toggleAudio() {
     settings.audioEnabled = !settings.audioEnabled;
     audioEnabledInput.checked = settings.audioEnabled;
     audioBtn.textContent = settings.audioEnabled ? '🔊' : '🔇';
@@ -615,6 +633,11 @@ audioBtn.addEventListener('click', () => {
         stopAudioLoop();
     }
     updateAudio();
+}
+audioBtn.addEventListener('click', toggleAudio);
+audioBtn.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    toggleAudio();
 });
 
 // Initialize

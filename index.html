@@ -9,8 +9,13 @@
 <body>
     <canvas id="canvas"></canvas>
 
-    <button id="audioBtn" class="audio-btn">🔇</button>
-    <button id="playPauseBtn" class="play-pause-btn">❚❚</button>
+    <div id="startOverlay" class="start-overlay">
+        <p>Press play to start</p>
+        <p class="hint">(or use the space bar)</p>
+    </div>
+
+    <button id="audioBtn" class="audio-btn">🔊</button>
+    <button id="playPauseBtn" class="play-pause-btn">▶</button>
 
     <div id="settings" class="settings hidden">
         <h2>Settings</h2>
@@ -88,7 +93,7 @@
 
         <div class="setting-group">
             <label for="audioEnabled">
-                <input type="checkbox" id="audioEnabled">
+                <input type="checkbox" id="audioEnabled" checked>
                 Enable Audio
             </label>
         </div>
