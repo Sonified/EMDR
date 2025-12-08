@@ -77,14 +77,76 @@ body {
     cursor: pointer;
 }
 
-.setting-group input[type="color"] {
+.setting-group input[type="range"] {
     width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: #555;
+    cursor: pointer;
+    -webkit-appearance: none;
+}
+
+.setting-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+}
+
+.color-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.setting-group input[type="color"] {
+    width: 50px;
     height: 36px;
     border: 1px solid #555;
     border-radius: 6px;
     background: #333;
     cursor: pointer;
     padding: 2px;
+    flex-shrink: 0;
+}
+
+.hex-input {
+    flex: 1;
+    padding: 8px 10px;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #333;
+    color: #fff;
+    font-size: 14px;
+    font-family: monospace;
+}
+
+.hex-input:focus {
+    outline: none;
+    border-color: #888;
+}
+
+.copy-btn {
+    width: 60px;
+    padding: 8px 0;
+    border: 1px solid #555;
+    border-radius: 6px;
+    background: #444;
+    color: #fff;
+    font-size: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+    text-align: center;
+}
+
+.copy-btn:hover {
+    background: #555;
+}
+
+.copy-btn:active {
+    background: #666;
 }
 
 .setting-group input[type="checkbox"] {
@@ -99,3 +161,31 @@ body {
     align-items: center;
     cursor: pointer;
 }
+
+.play-pause-btn {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 50px;
+    height: 50px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s;
+}
+
+.play-pause-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.trail-options.hidden {
+    display: none;
+}
+

@@ -2,9 +2,16 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
+// Disable image smoothing (doesn't affect arc() drawing)
+// ctx.imageSmoothingEnabled = false;
+// ctx.mozImageSmoothingEnabled = false;
+// ctx.webkitImageSmoothingEnabled = false;
+// ctx.msImageSmoothingEnabled = false;
+
 // Settings elements
 const settingsPanel = document.getElementById('settings');
 const speedInput = document.getElementById('speed');
+const ballSizeInput = document.getElementById('ballSize');
 const ballColorInput = document.getElementById('ballColor');
 const ballStyleSelect = document.getElementById('ballStyle');
 const glowEnabledInput = document.getElementById('glowEnabled');
@@ -15,14 +22,18 @@ const frequencyInput = document.getElementById('frequency');
 
 // State
 let settings = {
-    cyclesPerMinute: 20,
-    ballColor: '#ffffff',
-    ballStyle: 'solid',
+    cyclesPerMinute: 40,
+    motionType: 'sine',
+    ballSize: 60,
+    ballColor: '#db4343',
+    ballStyle: 'sphere',
     glowEnabled: false,
     trailEnabled: false,
+    trailLength: 20,
+    trailOpacity: 50,
     bgColor: '#000000',
     audioEnabled: false,
-    frequency: 220
+    frequency: 110
 };
 
 // Trail history for motion trail effect
@@ -31,6 +42,11 @@ const trailHistory = [];
 let ballPosition = 0; // -1 to 1 (left to right)
 let startTime = null;
 let mouseTimeout = null;
+let colorPickerOpen = false;
+let isPlaying = true;
+let pausedAt = null;
+
+const playPauseBtn = document.getElementById('playPauseBtn');
 
 // Audio context and nodes
 let audioContext = null;
@@ -88,9 +104,20 @@ function calculateBallPosition(timestamp) {
     const cyclesPerSecond = settings.cyclesPerMinute / 60;
     const period = 1000 / cyclesPerSecond; // ms per cycle
 
-    // Use sine wave for smooth back and forth motion
-    const phase = (elapsed / period) * Math.PI * 2;
-    ballPosition = Math.sin(phase);
+    // Calculate position based on motion type
+    if (settings.motionType === 'sine') {
+        // Sine wave - smooth easing at edges
+        const phase = (elapsed / period) * Math.PI * 2;
+        ballPosition = Math.sin(phase);
+    } else {
+        // Linear - triangle wave, constant speed
+        const cycleProgress = (elapsed % period) / period;
+        if (cycleProgress < 0.5) {
+            ballPosition = -1 + (cycleProgress * 4); // -1 to 1
+        } else {
+            ballPosition = 1 - ((cycleProgress - 0.5) * 4); // 1 to -1
+        }
+    }
 }
 
 // Helper to convert hex to RGB
@@ -113,7 +140,7 @@ function draw() {
     ctx.fillRect(0, 0, width, height);
 
     // Calculate ball screen position
-    const ballRadius = Math.min(width, height) * 0.03;
+    const ballRadius = settings.ballSize;
     const padding = ballRadius + 50;
     const travelWidth = width - (padding * 2);
     const ballX = padding + ((ballPosition + 1) / 2) * travelWidth;
@@ -122,8 +149,8 @@ function draw() {
     // Update trail history
     if (settings.trailEnabled) {
         trailHistory.push({ x: ballX, y: ballY });
-        // Keep last 20 positions
-        if (trailHistory.length > 20) {
+        // Keep positions based on trail length setting
+        while (trailHistory.length > settings.trailLength) {
             trailHistory.shift();
         }
     } else {
@@ -133,8 +160,9 @@ function draw() {
     // Draw motion trail
     if (settings.trailEnabled && trailHistory.length > 1) {
         const rgb = hexToRgb(settings.ballColor);
+        const maxAlpha = settings.trailOpacity / 100;
         for (let i = 0; i < trailHistory.length - 1; i++) {
-            const alpha = (i / trailHistory.length) * 0.5;
+            const alpha = (i / trailHistory.length) * maxAlpha;
             const trailRadius = ballRadius * (0.3 + (i / trailHistory.length) * 0.7);
 
             ctx.beginPath();
@@ -164,15 +192,9 @@ function draw() {
     ctx.arc(ballX, ballY, ballRadius, 0, Math.PI * 2);
 
     switch (settings.ballStyle) {
-        case 'solid':
+        case 'flat':
             ctx.fillStyle = settings.ballColor;
             ctx.fill();
-            break;
-
-        case 'circle':
-            ctx.strokeStyle = settings.ballColor;
-            ctx.lineWidth = 3;
-            ctx.stroke();
             break;
 
         case 'sphere':
@@ -195,11 +217,38 @@ function draw() {
     }
 }
 
+// Toggle play/pause
+function togglePlayPause() {
+    isPlaying = !isPlaying;
+    playPauseBtn.textContent = isPlaying ? '❚❚' : '▶';
+
+    if (isPlaying) {
+        // Resuming: adjust startTime to account for pause duration
+        if (pausedAt !== null && startTime !== null) {
+            startTime = performance.now() - pausedAt;
+        }
+        pausedAt = null;
+    } else {
+        // Pausing: store how far into animation we were
+        if (startTime !== null) {
+            pausedAt = performance.now() - startTime;
+        }
+        // Mute audio when paused
+        if (gainNode) {
+            gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+        }
+    }
+}
+
 // Animation loop
 function animate(timestamp) {
-    calculateBallPosition(timestamp);
+    if (isPlaying) {
+        calculateBallPosition(timestamp);
+    }
     draw();
-    updateAudio();
+    if (isPlaying) {
+        updateAudio();
+    }
     requestAnimationFrame(animate);
 }
 
@@ -211,18 +260,48 @@ function showSettings() {
         clearTimeout(mouseTimeout);
     }
 
-    mouseTimeout = setTimeout(() => {
-        settingsPanel.classList.add('hidden');
-    }, 2000);
+    if (!colorPickerOpen) {
+        mouseTimeout = setTimeout(() => {
+            settingsPanel.classList.add('hidden');
+        }, 2000);
+    }
 }
 
 // Event listeners for settings
 speedInput.addEventListener('input', (e) => {
-    settings.cyclesPerMinute = parseFloat(e.target.value) || 20;
+    settings.cyclesPerMinute = parseFloat(e.target.value) || 40;
+});
+
+document.getElementById('motionType').addEventListener('change', (e) => {
+    settings.motionType = e.target.value;
+});
+
+ballSizeInput.addEventListener('input', (e) => {
+    settings.ballSize = parseFloat(e.target.value) || 60;
+    document.getElementById('ballSizeValue').textContent = settings.ballSize;
 });
 
 ballColorInput.addEventListener('input', (e) => {
     settings.ballColor = e.target.value;
+    document.getElementById('ballColorHex').value = e.target.value;
+});
+
+ballColorInput.addEventListener('focus', () => {
+    colorPickerOpen = true;
+    if (mouseTimeout) clearTimeout(mouseTimeout);
+});
+
+ballColorInput.addEventListener('blur', () => {
+    colorPickerOpen = false;
+    showSettings();
+});
+
+document.getElementById('ballColorHex').addEventListener('input', (e) => {
+    const hex = e.target.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+        settings.ballColor = hex;
+        ballColorInput.value = hex;
+    }
 });
 
 ballStyleSelect.addEventListener('change', (e) => {
@@ -235,10 +314,42 @@ glowEnabledInput.addEventListener('change', (e) => {
 
 trailEnabledInput.addEventListener('change', (e) => {
     settings.trailEnabled = e.target.checked;
+    document.querySelectorAll('.trail-options').forEach(el => {
+        el.classList.toggle('hidden', !e.target.checked);
+    });
+});
+
+document.getElementById('trailLength').addEventListener('input', (e) => {
+    settings.trailLength = parseInt(e.target.value) || 20;
+    document.getElementById('trailLengthValue').textContent = settings.trailLength;
+});
+
+document.getElementById('trailOpacity').addEventListener('input', (e) => {
+    settings.trailOpacity = parseInt(e.target.value) || 50;
+    document.getElementById('trailOpacityValue').textContent = settings.trailOpacity;
 });
 
 bgColorInput.addEventListener('input', (e) => {
     settings.bgColor = e.target.value;
+    document.getElementById('bgColorHex').value = e.target.value;
+});
+
+bgColorInput.addEventListener('focus', () => {
+    colorPickerOpen = true;
+    if (mouseTimeout) clearTimeout(mouseTimeout);
+});
+
+bgColorInput.addEventListener('blur', () => {
+    colorPickerOpen = false;
+    showSettings();
+});
+
+document.getElementById('bgColorHex').addEventListener('input', (e) => {
+    const hex = e.target.value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+        settings.bgColor = hex;
+        bgColorInput.value = hex;
+    }
 });
 
 audioEnabledInput.addEventListener('change', (e) => {
@@ -259,8 +370,46 @@ frequencyInput.addEventListener('input', (e) => {
 // Mouse movement shows settings
 document.addEventListener('mousemove', showSettings);
 
+// Click outside settings toggles visibility
+document.addEventListener('click', (e) => {
+    if (!settingsPanel.contains(e.target) && e.target !== playPauseBtn) {
+        if (settingsPanel.classList.contains('hidden')) {
+            showSettings();
+        } else {
+            settingsPanel.classList.add('hidden');
+            if (mouseTimeout) clearTimeout(mouseTimeout);
+        }
+    }
+});
+
 // Handle window resize
 window.addEventListener('resize', resizeCanvas);
+
+// Copy button handlers
+document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        const targetId = e.target.dataset.target;
+        const input = document.getElementById(targetId);
+        navigator.clipboard.writeText(input.value).then(() => {
+            const originalText = e.target.textContent;
+            e.target.textContent = 'Copied!';
+            setTimeout(() => {
+                e.target.textContent = originalText;
+            }, 1000);
+        });
+    });
+});
+
+// Play/pause button click
+playPauseBtn.addEventListener('click', togglePlayPause);
+
+// Space bar toggles play/pause
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && e.target === document.body) {
+        e.preventDefault();
+        togglePlayPause();
+    }
+});
 
 // Initialize
 resizeCanvas();
