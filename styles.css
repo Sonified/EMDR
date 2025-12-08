@@ -61,7 +61,7 @@ html, body {
     padding: 16px;
     border-radius: 12px;
     color: #fff;
-    width: 200px;
+    width: 210px;
     max-height: calc(100vh - 100px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     overflow-y: auto;
     transition: opacity 0.3s ease;
