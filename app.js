@@ -315,7 +315,9 @@ function calculateBallPosition(timestamp) {
     if (lastTimestamp === null) {
         lastTimestamp = timestamp;
     }
-    const deltaTime = timestamp - lastTimestamp;
+    // Cap deltaTime to prevent jumps after UI interactions (color picker, etc.)
+    const rawDelta = timestamp - lastTimestamp;
+    const deltaTime = Math.min(rawDelta, 50); // Max 50ms (~20fps minimum)
     lastTimestamp = timestamp;
 
     const prevPosition = ballPosition;
