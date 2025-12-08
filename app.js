@@ -159,7 +159,7 @@ let settings = {
     trailLength: 15,
     trailOpacity: 15,
     bgColor: '#000000',
-    audioEnabled: false,
+    audioEnabled: true,
     frequency: 110
 };
 
@@ -600,3 +600,15 @@ document.addEventListener('keydown', (e) => {
 // Initialize
 resizeCanvas();
 requestAnimationFrame(animate);
+
+// Start audio if enabled by default (requires user interaction first)
+document.addEventListener('click', function initAudioOnClick() {
+    if (settings.audioEnabled) {
+        initAudio();
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+        startAudioLoop();
+    }
+    document.removeEventListener('click', initAudioOnClick);
+}, { once: true });
