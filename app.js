@@ -167,19 +167,23 @@ let settings = {
 const trailHistory = [];
 
 let ballPosition = 0; // -1 to 1 (left to right)
-let startTime = null;
 let mouseTimeout = null;
 let colorPickerOpen = false;
 let isPlaying = false;
-let pausedAt = null;
 
-// Transition state for smooth start/stop
-let isTransitioning = false;
-let transitionStart = null;
-let transitionFrom = 0;
-let transitionType = null; // 'rampUp' or 'rampDown'
-const RAMP_DURATION = 800; // ms for ramp up/down
-let initialDirection = 1; // 1 = start right, -1 = start left
+// Speed ramp state - controls how fast time advances (NOT amplitude!)
+let speedMultiplier = 0; // 0 = stopped, 1 = full speed
+let lastTimestamp = null;
+let virtualTime = 0; // Accumulated time at variable speed - this drives the wave
+const RAMP_DURATION = 800; // ms for speed ramp
+let rampStartTime = null;
+let rampDirection = null; // 'up' or 'down'
+let rampStartSpeed = 0; // speed when ramp started
+
+// Decelerate-to-zero state (when stopping)
+let isDecelerating = false;
+let decelStartPosition = 0; // position when decel started (for distance-based slowdown)
+let waitingForEdge = false; // if true, we're heading to edge first before decelerating
 
 const playPauseBtn = document.getElementById('playPauseBtn');
 
@@ -230,27 +234,28 @@ function initAudio() {
 function updateAudio() {
     if (!audioContext) return;
 
-    if (settings.audioEnabled && isPlaying) {
-        // Calculate position based on time for audio (independent of animation frame)
-        const now = performance.now();
-        const elapsed = pausedAt !== null ? pausedAt : (startTime ? now - startTime : 0);
+    if (settings.audioEnabled && speedMultiplier > 0) {
+        // Use virtualTime for audio position (same as visual)
         const cyclesPerSecond = settings.cyclesPerMinute / 60;
         const period = 1000 / cyclesPerSecond;
 
         let audioPosition;
         if (settings.motionType === 'sine') {
-            const phase = (elapsed / period) * Math.PI * 2;
+            const phase = (virtualTime / period) * Math.PI * 2;
             audioPosition = Math.sin(phase);
         } else {
-            const cycleProgress = (elapsed % period) / period;
-            if (cycleProgress < 0.5) {
-                audioPosition = -1 + (cycleProgress * 4);
+            const cycleProgress = ((virtualTime % period) + period) % period / period;
+            if (cycleProgress < 0.25) {
+                audioPosition = cycleProgress * 4;
+            } else if (cycleProgress < 0.75) {
+                audioPosition = 1 - ((cycleProgress - 0.25) * 4);
             } else {
-                audioPosition = 1 - ((cycleProgress - 0.5) * 4);
+                audioPosition = -1 + ((cycleProgress - 0.75) * 4);
             }
         }
 
-        gainNode.gain.setTargetAtTime(0.3, audioContext.currentTime, 0.1);
+        // Volume scales with speed multiplier for smooth fade
+        gainNode.gain.setTargetAtTime(0.3 * speedMultiplier, audioContext.currentTime, 0.1);
         panner.pan.setTargetAtTime(audioPosition, audioContext.currentTime, 0.02);
         oscillator.frequency.setTargetAtTime(settings.frequency, audioContext.currentTime, 0.1);
     } else {
@@ -272,68 +277,130 @@ function stopAudioLoop() {
     }
 }
 
-// Easing function for smooth transitions
+// Easing function for smooth speed transitions
 function easeInOutCubic(t) {
     return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 }
 
-// Calculate ball position based on time
-function calculateBallPosition(timestamp) {
-    // Handle ramp down transition (returning to center)
-    if (isTransitioning && transitionType === 'rampDown') {
-        const elapsed = timestamp - transitionStart;
-        const progress = Math.min(elapsed / RAMP_DURATION, 1);
-        const eased = easeInOutCubic(progress);
-        ballPosition = transitionFrom * (1 - eased);
+// Get current velocity direction (positive = moving right, negative = moving left)
+function getVelocityDirection() {
+    const cyclesPerSecond = settings.cyclesPerMinute / 60;
+    const period = 1000 / cyclesPerSecond;
 
-        if (progress >= 1) {
-            isTransitioning = false;
+    if (settings.motionType === 'sine') {
+        const phase = (virtualTime / period) * Math.PI * 2;
+        return Math.cos(phase); // derivative of sin is cos
+    } else {
+        const cycleProgress = ((virtualTime % period) + period) % period / period;
+        if (cycleProgress < 0.25 || cycleProgress >= 0.75) {
+            return 1; // moving right
+        } else {
+            return -1; // moving left
+        }
+    }
+}
+
+// Check if heading toward zero
+function isHeadingTowardZero() {
+    const vel = getVelocityDirection();
+    // Heading toward zero if: (position > 0 and moving left) or (position < 0 and moving right)
+    return (ballPosition > 0 && vel < 0) || (ballPosition < 0 && vel > 0);
+}
+
+// Calculate ball position based on virtual time (speed ramp approach)
+function calculateBallPosition(timestamp) {
+    if (lastTimestamp === null) {
+        lastTimestamp = timestamp;
+    }
+    const deltaTime = timestamp - lastTimestamp;
+    lastTimestamp = timestamp;
+
+    const prevPosition = ballPosition;
+
+    // Handle waiting for edge (user pressed stop while heading away from zero)
+    if (waitingForEdge) {
+        virtualTime += deltaTime * speedMultiplier;
+
+        // Check if we hit the edge (position magnitude >= 0.99)
+        const cyclesPerSecond = settings.cyclesPerMinute / 60;
+        const period = 1000 / cyclesPerSecond;
+        const phase = (virtualTime / period) * Math.PI * 2;
+        const newPos = Math.sin(phase);
+
+        if (Math.abs(newPos) >= 0.99) {
+            console.log('>>> HIT EDGE at position:', newPos.toFixed(3));
+            waitingForEdge = false;
+            isDecelerating = true;
+            decelStartPosition = newPos;
+            console.log('>>> Starting decel from edge, decelStartPosition:', decelStartPosition.toFixed(3));
+        }
+    }
+    // Handle deceleration - speed with ease-out curve
+    else if (isDecelerating) {
+        // Speed based on distance from zero, with ease-out curve
+        // sqrt makes it maintain speed longer, then drop quickly at the end
+        const distanceFromZero = Math.abs(ballPosition);
+        const startDistance = Math.abs(decelStartPosition);
+
+        if (startDistance > 0.01) {
+            const ratio = distanceFromZero / startDistance;
+            // Use sqrt for ease-out feel (maintains speed, quick stop)
+            speedMultiplier = Math.max(0.08, Math.sqrt(ratio));
+        } else {
+            speedMultiplier = 0;
+        }
+
+        virtualTime += deltaTime * speedMultiplier;
+    }
+    // Handle ramp up
+    else if (rampDirection === 'up') {
+        const rampElapsed = timestamp - rampStartTime;
+        const rampProgress = Math.min(rampElapsed / RAMP_DURATION, 1);
+        const easedProgress = easeInOutCubic(rampProgress);
+        speedMultiplier = rampStartSpeed + (1 - rampStartSpeed) * easedProgress;
+
+        if (rampProgress >= 1) {
+            rampDirection = null;
+            console.log('>>> Ramp up complete, speedMultiplier:', speedMultiplier.toFixed(3));
+        }
+
+        virtualTime += deltaTime * speedMultiplier;
+    }
+    // Normal playback
+    else {
+        virtualTime += deltaTime * speedMultiplier;
+    }
+
+    // Calculate wave position from virtual time
+    const cyclesPerSecond = settings.cyclesPerMinute / 60;
+    const period = 1000 / cyclesPerSecond;
+
+    if (settings.motionType === 'sine') {
+        const phase = (virtualTime / period) * Math.PI * 2;
+        ballPosition = Math.sin(phase);
+    } else {
+        const cycleProgress = ((virtualTime % period) + period) % period / period;
+        if (cycleProgress < 0.25) {
+            ballPosition = cycleProgress * 4;
+        } else if (cycleProgress < 0.75) {
+            ballPosition = 1 - ((cycleProgress - 0.25) * 4);
+        } else {
+            ballPosition = -1 + ((cycleProgress - 0.75) * 4);
+        }
+    }
+
+    // Check if we crossed zero while decelerating
+    if (isDecelerating) {
+        if ((prevPosition > 0 && ballPosition <= 0) || (prevPosition < 0 && ballPosition >= 0)) {
+            console.log('>>> CROSSED ZERO! Stopping. prev:', prevPosition.toFixed(3), 'new:', ballPosition.toFixed(3));
+            // Clear ALL animation state
+            isDecelerating = false;
+            waitingForEdge = false;
+            rampDirection = null;  // Important! Otherwise ramp keeps running
+            virtualTime = 0;
+            speedMultiplier = 0;
             ballPosition = 0;
         }
-        return;
-    }
-
-    if (!startTime) startTime = timestamp;
-
-    const elapsed = timestamp - startTime;
-    const cyclesPerSecond = settings.cyclesPerMinute / 60;
-    const period = 1000 / cyclesPerSecond; // ms per cycle
-
-    let targetPosition;
-    // Calculate position based on motion type
-    if (settings.motionType === 'sine') {
-        // Sine wave - starts from 0, direction determined by initialDirection
-        const phase = (elapsed / period) * Math.PI * 2;
-        targetPosition = Math.sin(phase) * initialDirection;
-    } else {
-        // Linear - triangle wave starting from 0
-        // Goes: 0 -> 1 -> 0 -> -1 -> 0 (one full cycle)
-        const cycleProgress = (elapsed % period) / period;
-        let rawPosition;
-        if (cycleProgress < 0.25) {
-            rawPosition = cycleProgress * 4; // 0 to 1
-        } else if (cycleProgress < 0.75) {
-            rawPosition = 1 - ((cycleProgress - 0.25) * 4); // 1 to -1
-        } else {
-            rawPosition = -1 + ((cycleProgress - 0.75) * 4); // -1 to 0
-        }
-        targetPosition = rawPosition * initialDirection;
-    }
-
-    // Handle ramp up transition - smoothly ramp amplitude from 0 to full
-    if (isTransitioning && transitionType === 'rampUp') {
-        const transitionElapsed = timestamp - transitionStart;
-        const progress = Math.min(transitionElapsed / RAMP_DURATION, 1);
-        const eased = easeInOutCubic(progress);
-
-        // Scale the amplitude during ramp up
-        ballPosition = targetPosition * eased;
-
-        if (progress >= 1) {
-            isTransitioning = false;
-        }
-    } else {
-        ballPosition = targetPosition;
     }
 }
 
@@ -459,6 +526,12 @@ function togglePlayPause() {
     }
 
     if (isPlaying) {
+        console.log('>>> PLAY pressed. position:', ballPosition.toFixed(3), 'speedMultiplier:', speedMultiplier.toFixed(3));
+
+        // Clear any deceleration state
+        isDecelerating = false;
+        waitingForEdge = false;
+
         // Initialize audio on first play if enabled
         if (settings.audioEnabled && !audioContext) {
             initAudio();
@@ -468,37 +541,37 @@ function togglePlayPause() {
             audioContext.resume();
         }
 
-        // Start fresh wave - always start going right
-        initialDirection = 1;
-        startTime = null; // Reset so wave starts fresh
-        pausedAt = null;
-
-        // Start ramp up transition
-        isTransitioning = true;
-        transitionType = 'rampUp';
-        transitionStart = performance.now();
-        transitionFrom = 0;
+        // Start speed ramp UP
+        rampDirection = 'up';
+        rampStartTime = performance.now();
+        rampStartSpeed = speedMultiplier;
+        console.log('>>> Starting ramp up from speed:', rampStartSpeed.toFixed(3));
     } else {
-        // Start ramp down transition (return to center)
-        isTransitioning = true;
-        transitionType = 'rampDown';
-        transitionStart = performance.now();
-        transitionFrom = ballPosition;
+        console.log('>>> PAUSE pressed. position:', ballPosition.toFixed(3), 'speedMultiplier:', speedMultiplier.toFixed(3));
 
-        // Pausing: store how far into animation we were
-        if (startTime !== null) {
-            pausedAt = performance.now() - startTime;
-        }
-        // Mute audio when paused
-        if (gainNode) {
-            gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+        const headingToZero = isHeadingTowardZero();
+        console.log('>>> Heading toward zero?', headingToZero, 'velocity direction:', getVelocityDirection().toFixed(3));
+
+        if (headingToZero) {
+            // Already heading toward zero - start decelerating based on distance
+            isDecelerating = true;
+            decelStartPosition = ballPosition;
+            console.log('>>> Decelerating toward zero from position:', decelStartPosition.toFixed(3));
+        } else {
+            // Heading toward edge - wait until we hit edge, then decelerate
+            // Maintain full speed until we reach the edge
+            waitingForEdge = true;
+            rampDirection = null;  // Cancel any ongoing ramp
+            speedMultiplier = 1;   // Full speed to the edge
+            console.log('>>> Waiting for edge first at full speed, then will decelerate');
         }
     }
 }
 
 // Animation loop
 function animate(timestamp) {
-    if (isPlaying || isTransitioning) {
+    // Always calculate position when playing, ramping, decelerating, or waiting for edge
+    if (isPlaying || rampDirection !== null || isDecelerating || waitingForEdge || speedMultiplier > 0) {
         calculateBallPosition(timestamp);
     }
     draw();
