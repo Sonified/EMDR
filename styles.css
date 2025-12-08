@@ -58,10 +58,10 @@ html, body {
     top: max(20px, env(safe-area-inset-top));
     left: max(20px, env(safe-area-inset-left));
     background: rgba(40, 40, 40, 0.95);
-    padding: 20px;
+    padding: 16px;
     border-radius: 12px;
     color: #fff;
-    min-width: 154px;
+    width: 180px;
     max-height: calc(100vh - 100px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     overflow-y: auto;
     transition: opacity 0.3s ease;
@@ -155,12 +155,13 @@ html, body {
 
 .hex-input {
     flex: 1;
-    padding: 8px 10px;
+    min-width: 0;
+    padding: 6px 6px;
     border: 1px solid #555;
     border-radius: 6px;
     background: #333;
     color: #fff;
-    font-size: 14px;
+    font-size: 12px;
     font-family: monospace;
 }
 
@@ -170,13 +171,13 @@ html, body {
 }
 
 .copy-btn {
-    width: 60px;
-    padding: 8px 0;
+    width: 44px;
+    padding: 6px 0;
     border: 1px solid #555;
     border-radius: 6px;
     background: #444;
     color: #fff;
-    font-size: 12px;
+    font-size: 11px;
     cursor: pointer;
     flex-shrink: 0;
     text-align: center;
@@ -240,5 +241,16 @@ html, body {
 
 .trail-options.hidden {
     display: none;
+}
+
+/* Pickr color picker adjustments */
+.pickr {
+    flex-shrink: 0;
+}
+
+.pickr .pcr-button {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
 }
 

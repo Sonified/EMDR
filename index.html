@@ -7,6 +7,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>EMDR Tool</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔵</text></svg>">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -42,18 +43,18 @@
         </div>
 
         <div class="setting-group">
-            <label for="ballColor">Ball Color</label>
+            <label>Ball Color</label>
             <div class="color-row">
-                <input type="color" id="ballColor" value="#db4343">
+                <div id="ballColorPicker"></div>
                 <input type="text" id="ballColorHex" value="#db4343" class="hex-input">
                 <button type="button" class="copy-btn" data-target="ballColorHex">Copy</button>
             </div>
         </div>
 
         <div class="setting-group">
-            <label for="bgColor">Background Color</label>
+            <label>Background Color</label>
             <div class="color-row">
-                <input type="color" id="bgColor" value="#000000">
+                <div id="bgColorPicker"></div>
                 <input type="text" id="bgColorHex" value="#000000" class="hex-input">
                 <button type="button" class="copy-btn" data-target="bgColorHex">Copy</button>
             </div>
@@ -108,6 +109,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

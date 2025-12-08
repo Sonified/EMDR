@@ -139,11 +139,9 @@ function renderFluid() {
 const settingsPanel = document.getElementById('settings');
 const speedInput = document.getElementById('speed');
 const ballSizeInput = document.getElementById('ballSize');
-const ballColorInput = document.getElementById('ballColor');
 const ballStyleSelect = document.getElementById('ballStyle');
 const glowEnabledInput = document.getElementById('glowEnabled');
 const trailStyleSelect = document.getElementById('trailStyle');
-const bgColorInput = document.getElementById('bgColor');
 const audioEnabledInput = document.getElementById('audioEnabled');
 const frequencyInput = document.getElementById('frequency');
 
@@ -171,7 +169,6 @@ const trailHistory = [];
 
 let ballPosition = 0; // -1 to 1 (left to right)
 let mouseTimeout = null;
-let colorPickerOpen = false;
 let isPlaying = false;
 
 // Speed ramp state - controls how fast time advances (NOT amplitude!)
@@ -311,21 +308,12 @@ function isHeadingTowardZero() {
 }
 
 // Calculate ball position based on virtual time (speed ramp approach)
-let lastCalcLog = 0;
 function calculateBallPosition(timestamp) {
     if (lastTimestamp === null) {
         lastTimestamp = timestamp;
     }
-    // Cap deltaTime to prevent jumps after UI interactions (color picker, etc.)
-    const rawDelta = timestamp - lastTimestamp;
-    const deltaTime = Math.min(rawDelta, 50); // Max 50ms (~20fps minimum)
-
-    // Log every 500ms or if rawDelta is large
-    if (timestamp - lastCalcLog > 500 || rawDelta > 100) {
-        console.log('calcPos: rawDelta:', rawDelta.toFixed(0), 'deltaTime:', deltaTime.toFixed(0), 'speedMult:', speedMultiplier.toFixed(2));
-        lastCalcLog = timestamp;
-    }
-
+    // Cap deltaTime to prevent jumps after UI interactions
+    const deltaTime = Math.min(timestamp - lastTimestamp, 50);
     lastTimestamp = timestamp;
 
     const prevPosition = ballPosition;
@@ -341,11 +329,9 @@ function calculateBallPosition(timestamp) {
         const newPos = Math.sin(phase);
 
         if (Math.abs(newPos) >= 0.99) {
-            console.log('>>> HIT EDGE at position:', newPos.toFixed(3));
             waitingForEdge = false;
             isDecelerating = true;
             decelStartPosition = newPos;
-            console.log('>>> Starting decel from edge, decelStartPosition:', decelStartPosition.toFixed(3));
         }
     }
     // Handle deceleration - speed with ease-out curve
@@ -374,7 +360,6 @@ function calculateBallPosition(timestamp) {
 
         if (rampProgress >= 1) {
             rampDirection = null;
-            console.log('>>> Ramp up complete, speedMultiplier:', speedMultiplier.toFixed(3));
         }
 
         virtualTime += deltaTime * speedMultiplier;
@@ -405,11 +390,10 @@ function calculateBallPosition(timestamp) {
     // Check if we crossed zero while decelerating
     if (isDecelerating) {
         if ((prevPosition > 0 && ballPosition <= 0) || (prevPosition < 0 && ballPosition >= 0)) {
-            console.log('>>> CROSSED ZERO! Stopping. prev:', prevPosition.toFixed(3), 'new:', ballPosition.toFixed(3));
             // Clear ALL animation state
             isDecelerating = false;
             waitingForEdge = false;
-            rampDirection = null;  // Important! Otherwise ramp keeps running
+            rampDirection = null;
             virtualTime = 0;
             speedMultiplier = 0;
             ballPosition = 0;
@@ -539,8 +523,6 @@ function togglePlayPause() {
     }
 
     if (isPlaying) {
-        console.log('>>> PLAY pressed. position:', ballPosition.toFixed(3), 'speedMultiplier:', speedMultiplier.toFixed(3));
-
         // Clear any deceleration state
         isDecelerating = false;
         waitingForEdge = false;
@@ -558,38 +540,24 @@ function togglePlayPause() {
         rampDirection = 'up';
         rampStartTime = performance.now();
         rampStartSpeed = speedMultiplier;
-        console.log('>>> Starting ramp up from speed:', rampStartSpeed.toFixed(3));
     } else {
-        console.log('>>> PAUSE pressed. position:', ballPosition.toFixed(3), 'speedMultiplier:', speedMultiplier.toFixed(3));
-
         const headingToZero = isHeadingTowardZero();
-        console.log('>>> Heading toward zero?', headingToZero, 'velocity direction:', getVelocityDirection().toFixed(3));
 
         if (headingToZero) {
             // Already heading toward zero - start decelerating based on distance
             isDecelerating = true;
             decelStartPosition = ballPosition;
-            console.log('>>> Decelerating toward zero from position:', decelStartPosition.toFixed(3));
         } else {
             // Heading toward edge - wait until we hit edge, then decelerate
-            // Maintain full speed until we reach the edge
             waitingForEdge = true;
-            rampDirection = null;  // Cancel any ongoing ramp
-            speedMultiplier = 1;   // Full speed to the edge
-            console.log('>>> Waiting for edge first at full speed, then will decelerate');
+            rampDirection = null;
+            speedMultiplier = 1;
         }
     }
 }
 
 // Animation loop
-let lastAnimateLog = 0;
 function animate(timestamp) {
-    // Log every 500ms to see if animate is running
-    if (timestamp - lastAnimateLog > 500) {
-        console.log('animate running, timestamp:', timestamp.toFixed(0), 'isPlaying:', isPlaying, 'speedMult:', speedMultiplier.toFixed(2));
-        lastAnimateLog = timestamp;
-    }
-
     // Always calculate position when playing, ramping, decelerating, or waiting for edge
     if (isPlaying || rampDirection !== null || isDecelerating || waitingForEdge || speedMultiplier > 0) {
         calculateBallPosition(timestamp);
@@ -600,17 +568,17 @@ function animate(timestamp) {
 }
 
 // Settings panel visibility
-function showSettings(fromBlur = false) {
-    if (fromBlur) console.log('showSettings called from blur, colorPickerOpen:', colorPickerOpen);
+let pickerOpen = false;
+
+function showSettings() {
     settingsPanel.classList.remove('hidden');
 
     if (mouseTimeout) {
         clearTimeout(mouseTimeout);
     }
 
-    if (!colorPickerOpen) {
+    if (!pickerOpen) {
         mouseTimeout = setTimeout(() => {
-            console.log('>>> TIMEOUT: hiding settings panel');
             settingsPanel.classList.add('hidden');
         }, 2000);
     }
@@ -630,28 +598,94 @@ ballSizeInput.addEventListener('input', (e) => {
     document.getElementById('ballSizeValue').textContent = settings.ballSize;
 });
 
-ballColorInput.addEventListener('input', (e) => {
-    settings.ballColor = e.target.value;
-    document.getElementById('ballColorHex').value = e.target.value;
+// Initialize Pickr color pickers
+const ballColorPicker = Pickr.create({
+    el: '#ballColorPicker',
+    theme: 'nano',
+    default: settings.ballColor,
+    swatches: [
+        '#db4343', '#e74c3c', '#ff6b6b', '#f39c12', '#f1c40f',
+        '#2ecc71', '#1abc9c', '#3498db', '#9b59b6', '#ffffff'
+    ],
+    components: {
+        preview: true,
+        opacity: false,
+        hue: true,
+        interaction: {
+            hex: true,
+            input: true,
+            save: true
+        }
+    }
 });
 
-ballColorInput.addEventListener('focus', () => {
-    colorPickerOpen = true;
+ballColorPicker.on('show', () => {
+    pickerOpen = true;
     if (mouseTimeout) clearTimeout(mouseTimeout);
 });
 
-ballColorInput.addEventListener('blur', () => {
-    console.log('>>> BALL COLOR BLUR - start');
-    colorPickerOpen = false;
-    showSettings(true);
-    console.log('>>> BALL COLOR BLUR - end');
+ballColorPicker.on('hide', () => {
+    pickerOpen = false;
+    showSettings();
+});
+
+ballColorPicker.on('change', (color) => {
+    const hex = color.toHEXA().toString();
+    settings.ballColor = hex;
+    document.getElementById('ballColorHex').value = hex;
+    ballColorPicker.applyColor();
+});
+
+ballColorPicker.on('save', () => {
+    ballColorPicker.hide();
+});
+
+const bgColorPicker = Pickr.create({
+    el: '#bgColorPicker',
+    theme: 'nano',
+    default: settings.bgColor,
+    swatches: [
+        '#000000', '#1a1a2e', '#16213e', '#0f3460', '#2c3e50',
+        '#34495e', '#1e272e', '#2d3436', '#636e72', '#ffffff'
+    ],
+    components: {
+        preview: true,
+        opacity: false,
+        hue: true,
+        interaction: {
+            hex: true,
+            input: true,
+            save: true
+        }
+    }
+});
+
+bgColorPicker.on('show', () => {
+    pickerOpen = true;
+    if (mouseTimeout) clearTimeout(mouseTimeout);
+});
+
+bgColorPicker.on('hide', () => {
+    pickerOpen = false;
+    showSettings();
+});
+
+bgColorPicker.on('change', (color) => {
+    const hex = color.toHEXA().toString();
+    settings.bgColor = hex;
+    document.getElementById('bgColorHex').value = hex;
+    bgColorPicker.applyColor();
+});
+
+bgColorPicker.on('save', () => {
+    bgColorPicker.hide();
 });
 
 document.getElementById('ballColorHex').addEventListener('input', (e) => {
     const hex = e.target.value;
     if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
         settings.ballColor = hex;
-        ballColorInput.value = hex;
+        ballColorPicker.setColor(hex);
     }
 });
 
@@ -684,28 +718,11 @@ document.getElementById('trailOpacity').addEventListener('input', (e) => {
     document.getElementById('trailOpacityValue').textContent = settings.trailOpacity;
 });
 
-bgColorInput.addEventListener('input', (e) => {
-    settings.bgColor = e.target.value;
-    document.getElementById('bgColorHex').value = e.target.value;
-});
-
-bgColorInput.addEventListener('focus', () => {
-    colorPickerOpen = true;
-    if (mouseTimeout) clearTimeout(mouseTimeout);
-});
-
-bgColorInput.addEventListener('blur', () => {
-    console.log('>>> BG COLOR BLUR - start');
-    colorPickerOpen = false;
-    showSettings(true);
-    console.log('>>> BG COLOR BLUR - end');
-});
-
 document.getElementById('bgColorHex').addEventListener('input', (e) => {
     const hex = e.target.value;
     if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
         settings.bgColor = hex;
-        bgColorInput.value = hex;
+        bgColorPicker.setColor(hex);
     }
 });
 
@@ -733,6 +750,9 @@ document.addEventListener('mousemove', showSettings);
 
 // Click outside settings toggles visibility
 document.addEventListener('click', (e) => {
+    // Don't hide if clicking inside a Pickr popup or picker is open
+    if (pickerOpen || e.target.closest('.pcr-app')) return;
+
     if (!settingsPanel.contains(e.target) && e.target !== playPauseBtn && e.target !== audioBtn) {
         if (settingsPanel.classList.contains('hidden')) {
             showSettings();
