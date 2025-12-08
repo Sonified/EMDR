@@ -311,6 +311,7 @@ function isHeadingTowardZero() {
 }
 
 // Calculate ball position based on virtual time (speed ramp approach)
+let lastCalcLog = 0;
 function calculateBallPosition(timestamp) {
     if (lastTimestamp === null) {
         lastTimestamp = timestamp;
@@ -318,6 +319,13 @@ function calculateBallPosition(timestamp) {
     // Cap deltaTime to prevent jumps after UI interactions (color picker, etc.)
     const rawDelta = timestamp - lastTimestamp;
     const deltaTime = Math.min(rawDelta, 50); // Max 50ms (~20fps minimum)
+
+    // Log every 500ms or if rawDelta is large
+    if (timestamp - lastCalcLog > 500 || rawDelta > 100) {
+        console.log('calcPos: rawDelta:', rawDelta.toFixed(0), 'deltaTime:', deltaTime.toFixed(0), 'speedMult:', speedMultiplier.toFixed(2));
+        lastCalcLog = timestamp;
+    }
+
     lastTimestamp = timestamp;
 
     const prevPosition = ballPosition;
@@ -574,7 +582,14 @@ function togglePlayPause() {
 }
 
 // Animation loop
+let lastAnimateLog = 0;
 function animate(timestamp) {
+    // Log every 500ms to see if animate is running
+    if (timestamp - lastAnimateLog > 500) {
+        console.log('animate running, timestamp:', timestamp.toFixed(0), 'isPlaying:', isPlaying, 'speedMult:', speedMultiplier.toFixed(2));
+        lastAnimateLog = timestamp;
+    }
+
     // Always calculate position when playing, ramping, decelerating, or waiting for edge
     if (isPlaying || rampDirection !== null || isDecelerating || waitingForEdge || speedMultiplier > 0) {
         calculateBallPosition(timestamp);
@@ -585,7 +600,8 @@ function animate(timestamp) {
 }
 
 // Settings panel visibility
-function showSettings() {
+function showSettings(fromBlur = false) {
+    if (fromBlur) console.log('showSettings called from blur, colorPickerOpen:', colorPickerOpen);
     settingsPanel.classList.remove('hidden');
 
     if (mouseTimeout) {
@@ -594,6 +610,7 @@ function showSettings() {
 
     if (!colorPickerOpen) {
         mouseTimeout = setTimeout(() => {
+            console.log('>>> TIMEOUT: hiding settings panel');
             settingsPanel.classList.add('hidden');
         }, 2000);
     }
@@ -624,8 +641,10 @@ ballColorInput.addEventListener('focus', () => {
 });
 
 ballColorInput.addEventListener('blur', () => {
+    console.log('>>> BALL COLOR BLUR - start');
     colorPickerOpen = false;
-    showSettings();
+    showSettings(true);
+    console.log('>>> BALL COLOR BLUR - end');
 });
 
 document.getElementById('ballColorHex').addEventListener('input', (e) => {
@@ -676,8 +695,10 @@ bgColorInput.addEventListener('focus', () => {
 });
 
 bgColorInput.addEventListener('blur', () => {
+    console.log('>>> BG COLOR BLUR - start');
     colorPickerOpen = false;
-    showSettings();
+    showSettings(true);
+    console.log('>>> BG COLOR BLUR - end');
 });
 
 document.getElementById('bgColorHex').addEventListener('input', (e) => {
