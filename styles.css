@@ -23,7 +23,7 @@ body {
     padding: 20px;
     border-radius: 12px;
     color: #fff;
-    min-width: 220px;
+    min-width: 154px;
     transition: opacity 0.3s ease;
     z-index: 100;
 }

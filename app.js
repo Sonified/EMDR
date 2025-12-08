@@ -31,6 +31,7 @@ let settings = {
     trailEnabled: false,
     trailLength: 20,
     trailOpacity: 50,
+    trail3D: false,
     bgColor: '#000000',
     audioEnabled: false,
     frequency: 110
@@ -87,12 +88,45 @@ function initAudio() {
 function updateAudio() {
     if (!audioContext) return;
 
-    if (settings.audioEnabled) {
+    if (settings.audioEnabled && isPlaying) {
+        // Calculate position based on time for audio (independent of animation frame)
+        const now = performance.now();
+        const elapsed = pausedAt !== null ? pausedAt : (startTime ? now - startTime : 0);
+        const cyclesPerSecond = settings.cyclesPerMinute / 60;
+        const period = 1000 / cyclesPerSecond;
+
+        let audioPosition;
+        if (settings.motionType === 'sine') {
+            const phase = (elapsed / period) * Math.PI * 2;
+            audioPosition = Math.sin(phase);
+        } else {
+            const cycleProgress = (elapsed % period) / period;
+            if (cycleProgress < 0.5) {
+                audioPosition = -1 + (cycleProgress * 4);
+            } else {
+                audioPosition = 1 - ((cycleProgress - 0.5) * 4);
+            }
+        }
+
         gainNode.gain.setTargetAtTime(0.3, audioContext.currentTime, 0.1);
-        panner.pan.setTargetAtTime(ballPosition, audioContext.currentTime, 0.02);
+        panner.pan.setTargetAtTime(audioPosition, audioContext.currentTime, 0.02);
         oscillator.frequency.setTargetAtTime(settings.frequency, audioContext.currentTime, 0.1);
     } else {
         gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+    }
+}
+
+// Audio loop runs independently of animation frame
+let audioInterval = null;
+function startAudioLoop() {
+    if (audioInterval) return;
+    audioInterval = setInterval(updateAudio, 16); // ~60fps
+}
+
+function stopAudioLoop() {
+    if (audioInterval) {
+        clearInterval(audioInterval);
+        audioInterval = null;
     }
 }
 
@@ -162,11 +196,23 @@ function draw() {
         const rgb = hexToRgb(settings.ballColor);
         const maxAlpha = settings.trailOpacity / 100;
         for (let i = 0; i < trailHistory.length - 1; i++) {
-            const alpha = (i / trailHistory.length) * maxAlpha;
-            const trailRadius = ballRadius * (0.3 + (i / trailHistory.length) * 0.7);
+            const progress = i / trailHistory.length;
+            const alpha = progress * maxAlpha;
+
+            let trailRadius, trailY;
+            if (settings.trail3D) {
+                // 3D effect: trail goes back into the screen
+                const depth = 1 - progress; // 0 = front, 1 = back
+                trailRadius = ballRadius * (0.2 + progress * 0.8) * (0.3 + progress * 0.7);
+                // Move up towards vanishing point as depth increases
+                trailY = trailHistory[i].y - (depth * ballRadius * 1.5);
+            } else {
+                trailRadius = ballRadius * (0.3 + progress * 0.7);
+                trailY = trailHistory[i].y;
+            }
 
             ctx.beginPath();
-            ctx.arc(trailHistory[i].x, trailHistory[i].y, trailRadius, 0, Math.PI * 2);
+            ctx.arc(trailHistory[i].x, trailY, trailRadius, 0, Math.PI * 2);
             ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
             ctx.fill();
         }
@@ -246,9 +292,6 @@ function animate(timestamp) {
         calculateBallPosition(timestamp);
     }
     draw();
-    if (isPlaying) {
-        updateAudio();
-    }
     requestAnimationFrame(animate);
 }
 
@@ -329,6 +372,10 @@ document.getElementById('trailOpacity').addEventListener('input', (e) => {
     document.getElementById('trailOpacityValue').textContent = settings.trailOpacity;
 });
 
+document.getElementById('trail3D').addEventListener('change', (e) => {
+    settings.trail3D = e.target.checked;
+});
+
 bgColorInput.addEventListener('input', (e) => {
     settings.bgColor = e.target.value;
     document.getElementById('bgColorHex').value = e.target.value;
@@ -359,6 +406,9 @@ audioEnabledInput.addEventListener('change', (e) => {
         if (audioContext.state === 'suspended') {
             audioContext.resume();
         }
+        startAudioLoop();
+    } else {
+        stopAudioLoop();
     }
     updateAudio();
 });
