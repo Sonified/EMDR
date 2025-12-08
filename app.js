@@ -159,7 +159,7 @@ let settings = {
     trailLength: 15,
     trailOpacity: 15,
     bgColor: '#000000',
-    audioEnabled: true,
+    audioEnabled: false,
     frequency: 110
 };
 
@@ -537,6 +537,7 @@ document.getElementById('bgColorHex').addEventListener('input', (e) => {
 
 audioEnabledInput.addEventListener('change', (e) => {
     settings.audioEnabled = e.target.checked;
+    audioBtn.textContent = settings.audioEnabled ? '🔊' : '🔇';
     if (settings.audioEnabled) {
         initAudio();
         if (audioContext.state === 'suspended') {
@@ -558,7 +559,7 @@ document.addEventListener('mousemove', showSettings);
 
 // Click outside settings toggles visibility
 document.addEventListener('click', (e) => {
-    if (!settingsPanel.contains(e.target) && e.target !== playPauseBtn) {
+    if (!settingsPanel.contains(e.target) && e.target !== playPauseBtn && e.target !== audioBtn) {
         if (settingsPanel.classList.contains('hidden')) {
             showSettings();
         } else {
@@ -597,18 +598,25 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Initialize
-resizeCanvas();
-requestAnimationFrame(animate);
+// Audio button
+const audioBtn = document.getElementById('audioBtn');
+audioBtn.addEventListener('click', () => {
+    settings.audioEnabled = !settings.audioEnabled;
+    audioEnabledInput.checked = settings.audioEnabled;
+    audioBtn.textContent = settings.audioEnabled ? '🔊' : '🔇';
 
-// Start audio if enabled by default (requires user interaction first)
-document.addEventListener('click', function initAudioOnClick() {
     if (settings.audioEnabled) {
         initAudio();
         if (audioContext.state === 'suspended') {
             audioContext.resume();
         }
         startAudioLoop();
+    } else {
+        stopAudioLoop();
     }
-    document.removeEventListener('click', initAudioOnClick);
-}, { once: true });
+    updateAudio();
+});
+
+// Initialize
+resizeCanvas();
+requestAnimationFrame(animate);
