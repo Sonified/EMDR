@@ -717,8 +717,17 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Handle window resize
+// Handle window resize and orientation change
 window.addEventListener('resize', resizeCanvas);
+window.addEventListener('orientationchange', () => {
+    // Delay to let the browser finish rotating
+    setTimeout(resizeCanvas, 100);
+});
+
+// Also handle visual viewport changes (for mobile browsers with dynamic toolbars)
+if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', resizeCanvas);
+}
 
 // Copy button handlers
 document.querySelectorAll('.copy-btn').forEach(btn => {

@@ -4,9 +4,16 @@
     box-sizing: border-box;
 }
 
-body {
+html, body {
+    width: 100%;
+    height: 100%;
     overflow: hidden;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    /* Prevent pull-to-refresh and bounce on mobile */
+    overscroll-behavior: none;
+    touch-action: none;
+    /* Handle notched phones */
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 #canvas {
@@ -14,8 +21,8 @@ body {
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     z-index: 0;
 }
 
@@ -36,27 +43,30 @@ body {
 
 .start-overlay p {
     margin: 0;
-    font-size: 48px;
+    font-size: clamp(24px, 6vw, 48px);
     font-weight: 300;
 }
 
 .start-overlay .hint {
-    font-size: 24px;
+    font-size: clamp(14px, 3vw, 24px);
     margin-top: 16px;
     opacity: 0.6;
 }
 
 .settings {
     position: fixed;
-    top: 20px;
-    left: 20px;
+    top: max(20px, env(safe-area-inset-top));
+    left: max(20px, env(safe-area-inset-left));
     background: rgba(40, 40, 40, 0.95);
     padding: 20px;
     border-radius: 12px;
     color: #fff;
     min-width: 154px;
+    max-height: calc(100vh - 100px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    overflow-y: auto;
     transition: opacity 0.3s ease;
     z-index: 100;
+    -webkit-overflow-scrolling: touch;
 }
 
 .settings.hidden {
@@ -196,7 +206,7 @@ body {
 .audio-btn,
 .play-pause-btn {
     position: fixed;
-    bottom: 20px;
+    bottom: max(20px, env(safe-area-inset-bottom));
     width: 50px;
     height: 50px;
     border: none;
@@ -210,14 +220,17 @@ body {
     align-items: center;
     justify-content: center;
     transition: background 0.2s;
+    /* Prevent text selection on mobile */
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
 }
 
 .play-pause-btn {
-    right: 20px;
+    right: max(20px, env(safe-area-inset-right));
 }
 
 .audio-btn {
-    right: 80px;
+    right: calc(max(20px, env(safe-area-inset-right)) + 60px);
 }
 
 .audio-btn:hover,
