@@ -2,11 +2,137 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-// Disable image smoothing (doesn't affect arc() drawing)
-// ctx.imageSmoothingEnabled = false;
-// ctx.mozImageSmoothingEnabled = false;
-// ctx.webkitImageSmoothingEnabled = false;
-// ctx.msImageSmoothingEnabled = false;
+// Three.js setup for fluid effect
+let threeRenderer, threeScene, threeCamera, fluidMaterial;
+let fluidCanvas = null;
+const MAX_METABALLS = 50;
+
+function initThreeJS() {
+    if (threeRenderer) return;
+
+    // Create separate canvas for WebGL
+    fluidCanvas = document.createElement('canvas');
+    fluidCanvas.id = 'fluidCanvas';
+    fluidCanvas.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:1;';
+    document.body.insertBefore(fluidCanvas, canvas);
+
+    threeRenderer = new THREE.WebGLRenderer({ canvas: fluidCanvas, alpha: true });
+    threeRenderer.setSize(window.innerWidth, window.innerHeight);
+    threeRenderer.setPixelRatio(window.devicePixelRatio);
+
+    threeScene = new THREE.Scene();
+    threeCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+    // Metaball shader
+    const vertexShader = `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = vec4(position, 1.0);
+        }
+    `;
+
+    const fragmentShader = `
+        precision highp float;
+        varying vec2 vUv;
+
+        uniform vec2 resolution;
+        uniform vec3 ballColor;
+        uniform vec3 bgColor;
+        uniform float ballRadius;
+        uniform int numBalls;
+        uniform vec2 balls[${MAX_METABALLS}];
+        uniform float ballSizes[${MAX_METABALLS}];
+        uniform float opacity;
+
+        void main() {
+            vec2 pixel = vUv * resolution;
+            float sum = 0.0;
+
+            // Metaball field function - sum of 1/distance^2
+            for (int i = 0; i < ${MAX_METABALLS}; i++) {
+                if (i >= numBalls) break;
+                vec2 diff = pixel - balls[i];
+                float r = ballSizes[i];
+                float dist = length(diff);
+                // Smooth falloff
+                sum += (r * r) / (dist * dist + 1.0);
+            }
+
+            // Threshold and smooth edge
+            float threshold = 1.0;
+            float edge = smoothstep(threshold - 0.3, threshold + 0.1, sum);
+
+            // Add some glow
+            float glow = smoothstep(0.0, threshold, sum) * 0.3;
+
+            vec3 color = ballColor;
+            float alpha = (edge + glow) * opacity;
+
+            gl_FragColor = vec4(color, alpha);
+        }
+    `;
+
+    fluidMaterial = new THREE.ShaderMaterial({
+        vertexShader,
+        fragmentShader,
+        uniforms: {
+            resolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+            ballColor: { value: new THREE.Vector3(1, 0, 0) },
+            bgColor: { value: new THREE.Vector3(0, 0, 0) },
+            ballRadius: { value: 60.0 },
+            numBalls: { value: 0 },
+            balls: { value: new Array(MAX_METABALLS).fill(new THREE.Vector2(0, 0)) },
+            ballSizes: { value: new Array(MAX_METABALLS).fill(0) },
+            opacity: { value: 1.0 }
+        },
+        transparent: true,
+        depthTest: false
+    });
+
+    const geometry = new THREE.PlaneGeometry(2, 2);
+    const mesh = new THREE.Mesh(geometry, fluidMaterial);
+    threeScene.add(mesh);
+}
+
+function updateFluidShader() {
+    if (!fluidMaterial || settings.trailStyle !== 'fluid') return;
+
+    const rgb = hexToRgb(settings.ballColor);
+    fluidMaterial.uniforms.ballColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b / 255);
+    fluidMaterial.uniforms.ballRadius.value = settings.ballSize;
+    fluidMaterial.uniforms.opacity.value = settings.trailOpacity / 100;
+
+    // Pass all trail positions to shader
+    const positions = [];
+    const sizes = [];
+
+    for (let i = 0; i < trailHistory.length; i++) {
+        const progress = i / trailHistory.length;
+        positions.push(new THREE.Vector2(trailHistory[i].x, window.innerHeight - trailHistory[i].y));
+        sizes.push(settings.ballSize * (0.3 + progress * 0.7));
+    }
+
+    // Pad arrays to MAX_METABALLS
+    while (positions.length < MAX_METABALLS) {
+        positions.push(new THREE.Vector2(-9999, -9999));
+        sizes.push(0);
+    }
+
+    fluidMaterial.uniforms.balls.value = positions;
+    fluidMaterial.uniforms.ballSizes.value = sizes;
+    fluidMaterial.uniforms.numBalls.value = trailHistory.length;
+}
+
+function renderFluid() {
+    if (!threeRenderer || settings.trailStyle !== 'fluid') {
+        if (fluidCanvas) fluidCanvas.style.display = 'none';
+        return;
+    }
+    fluidCanvas.style.display = 'block';
+    updateFluidShader();
+    threeRenderer.render(threeScene, threeCamera);
+}
 
 // Settings elements
 const settingsPanel = document.getElementById('settings');
@@ -58,6 +184,14 @@ let gainNode = null;
 function resizeCanvas() {
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
+
+    // Also resize Three.js renderer if initialized
+    if (threeRenderer) {
+        threeRenderer.setSize(window.innerWidth, window.innerHeight);
+        if (fluidMaterial) {
+            fluidMaterial.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
+        }
+    }
 }
 
 // Initialize audio
@@ -190,48 +324,31 @@ function draw() {
         trailHistory.length = 0;
     }
 
-    // Draw motion trail
-    if (settings.trailStyle !== 'none' && trailHistory.length > 1) {
+    // Draw motion trail (Canvas 2D - basic and 3d styles only)
+    if (settings.trailStyle !== 'none' && settings.trailStyle !== 'fluid' && trailHistory.length > 1) {
         const rgb = hexToRgb(settings.ballColor);
         const maxAlpha = settings.trailOpacity / 100;
 
-        if (settings.trailStyle === 'fluid') {
-            // Fluid/metaball effect - draw overlapping circles with blur
-            ctx.save();
-            ctx.filter = `blur(${ballRadius * 0.3}px)`;
-            for (let i = 0; i < trailHistory.length - 1; i++) {
-                const progress = i / trailHistory.length;
-                const alpha = progress * maxAlpha * 1.5;
-                const trailRadius = ballRadius * (0.4 + progress * 0.6);
+        for (let i = 0; i < trailHistory.length - 1; i++) {
+            const progress = i / trailHistory.length;
+            const alpha = progress * maxAlpha;
 
-                ctx.beginPath();
-                ctx.arc(trailHistory[i].x, trailHistory[i].y, trailRadius, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
-                ctx.fill();
+            let trailRadius, trailY;
+            if (settings.trailStyle === '3d') {
+                // 3D effect: trail goes back into the screen
+                const depth = 1 - progress; // 0 = front, 1 = back
+                trailRadius = ballRadius * (0.2 + progress * 0.8) * (0.3 + progress * 0.7);
+                // Move up towards vanishing point as depth increases
+                trailY = trailHistory[i].y - (depth * ballRadius * 1.5);
+            } else {
+                trailRadius = ballRadius * (0.3 + progress * 0.7);
+                trailY = trailHistory[i].y;
             }
-            ctx.restore();
-        } else {
-            for (let i = 0; i < trailHistory.length - 1; i++) {
-                const progress = i / trailHistory.length;
-                const alpha = progress * maxAlpha;
 
-                let trailRadius, trailY;
-                if (settings.trailStyle === '3d') {
-                    // 3D effect: trail goes back into the screen
-                    const depth = 1 - progress; // 0 = front, 1 = back
-                    trailRadius = ballRadius * (0.2 + progress * 0.8) * (0.3 + progress * 0.7);
-                    // Move up towards vanishing point as depth increases
-                    trailY = trailHistory[i].y - (depth * ballRadius * 1.5);
-                } else {
-                    trailRadius = ballRadius * (0.3 + progress * 0.7);
-                    trailY = trailHistory[i].y;
-                }
-
-                ctx.beginPath();
-                ctx.arc(trailHistory[i].x, trailY, trailRadius, 0, Math.PI * 2);
-                ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
-                ctx.fill();
-            }
+            ctx.beginPath();
+            ctx.arc(trailHistory[i].x, trailY, trailRadius, 0, Math.PI * 2);
+            ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
+            ctx.fill();
         }
     }
 
@@ -309,6 +426,7 @@ function animate(timestamp) {
         calculateBallPosition(timestamp);
     }
     draw();
+    renderFluid();
     requestAnimationFrame(animate);
 }
 
@@ -377,6 +495,10 @@ trailStyleSelect.addEventListener('change', (e) => {
     document.querySelectorAll('.trail-options').forEach(el => {
         el.classList.toggle('hidden', e.target.value === 'none');
     });
+    // Initialize Three.js when fluid is selected
+    if (e.target.value === 'fluid') {
+        initThreeJS();
+    }
 });
 
 document.getElementById('trailLength').addEventListener('input', (e) => {
