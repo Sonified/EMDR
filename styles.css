@@ -25,9 +25,9 @@ body {
 
 .start-overlay {
     position: fixed;
-    top: 50%;
+    top: 60%;
     left: 50%;
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, 0);
     text-align: center;
     color: rgba(255, 255, 255, 0.7);
     z-index: 50;

@@ -173,6 +173,13 @@ let colorPickerOpen = false;
 let isPlaying = false;
 let pausedAt = null;
 
+// Transition state for smooth start/stop
+let isTransitioning = false;
+let transitionStart = null;
+let transitionFrom = 0;
+let transitionType = null; // 'rampUp' or 'rampDown'
+const RAMP_DURATION = 800; // ms for ramp up/down
+
 const playPauseBtn = document.getElementById('playPauseBtn');
 
 // Audio context and nodes
@@ -264,27 +271,63 @@ function stopAudioLoop() {
     }
 }
 
+// Easing function for smooth transitions
+function easeInOutCubic(t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+}
+
 // Calculate ball position based on time
 function calculateBallPosition(timestamp) {
+    // Handle ramp down transition (returning to center)
+    if (isTransitioning && transitionType === 'rampDown') {
+        const elapsed = timestamp - transitionStart;
+        const progress = Math.min(elapsed / RAMP_DURATION, 1);
+        const eased = easeInOutCubic(progress);
+        ballPosition = transitionFrom * (1 - eased);
+
+        if (progress >= 1) {
+            isTransitioning = false;
+            ballPosition = 0;
+        }
+        return;
+    }
+
     if (!startTime) startTime = timestamp;
 
     const elapsed = timestamp - startTime;
     const cyclesPerSecond = settings.cyclesPerMinute / 60;
     const period = 1000 / cyclesPerSecond; // ms per cycle
 
+    let targetPosition;
     // Calculate position based on motion type
     if (settings.motionType === 'sine') {
         // Sine wave - smooth easing at edges
         const phase = (elapsed / period) * Math.PI * 2;
-        ballPosition = Math.sin(phase);
+        targetPosition = Math.sin(phase);
     } else {
         // Linear - triangle wave, constant speed
         const cycleProgress = (elapsed % period) / period;
         if (cycleProgress < 0.5) {
-            ballPosition = -1 + (cycleProgress * 4); // -1 to 1
+            targetPosition = -1 + (cycleProgress * 4); // -1 to 1
         } else {
-            ballPosition = 1 - ((cycleProgress - 0.5) * 4); // 1 to -1
+            targetPosition = 1 - ((cycleProgress - 0.5) * 4); // 1 to -1
         }
+    }
+
+    // Handle ramp up transition
+    if (isTransitioning && transitionType === 'rampUp') {
+        const transitionElapsed = timestamp - transitionStart;
+        const progress = Math.min(transitionElapsed / RAMP_DURATION, 1);
+        const eased = easeInOutCubic(progress);
+
+        // Blend from starting position to target position
+        ballPosition = transitionFrom + (targetPosition - transitionFrom) * eased;
+
+        if (progress >= 1) {
+            isTransitioning = false;
+        }
+    } else {
+        ballPosition = targetPosition;
     }
 }
 
@@ -418,12 +461,26 @@ function togglePlayPause() {
         if (audioContext && audioContext.state === 'suspended') {
             audioContext.resume();
         }
+        // Start ramp up transition
+        isTransitioning = true;
+        transitionType = 'rampUp';
+        transitionStart = performance.now();
+        transitionFrom = ballPosition;
+
         // Resuming: adjust startTime to account for pause duration
         if (pausedAt !== null && startTime !== null) {
             startTime = performance.now() - pausedAt;
+        } else {
+            startTime = null; // Reset to sync with current position
         }
         pausedAt = null;
     } else {
+        // Start ramp down transition (return to center)
+        isTransitioning = true;
+        transitionType = 'rampDown';
+        transitionStart = performance.now();
+        transitionFrom = ballPosition;
+
         // Pausing: store how far into animation we were
         if (startTime !== null) {
             pausedAt = performance.now() - startTime;
@@ -437,7 +494,7 @@ function togglePlayPause() {
 
 // Animation loop
 function animate(timestamp) {
-    if (isPlaying) {
+    if (isPlaying || isTransitioning) {
         calculateBallPosition(timestamp);
     }
     draw();
