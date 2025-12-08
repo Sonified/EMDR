@@ -147,11 +147,14 @@ const bgColorInput = document.getElementById('bgColor');
 const audioEnabledInput = document.getElementById('audioEnabled');
 const frequencyInput = document.getElementById('frequency');
 
+// Detect mobile
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+
 // State
 let settings = {
     cyclesPerMinute: 40,
     motionType: 'sine',
-    ballSize: 60,
+    ballSize: isMobile ? 30 : 60,
     ballColor: '#db4343',
     ballStyle: 'sphere',
     glowEnabled: false,
@@ -785,4 +788,9 @@ audioBtn.addEventListener('touchend', (e) => {
 
 // Initialize
 resizeCanvas();
+
+// Sync ball size UI with settings (for mobile default)
+ballSizeInput.value = settings.ballSize;
+document.getElementById('ballSizeValue').textContent = settings.ballSize;
+
 requestAnimationFrame(animate);
