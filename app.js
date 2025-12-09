@@ -1185,9 +1185,9 @@ function calculateBallPosition(timestamp) {
         }
     }
 
-    // Sync music playback rate to ball speed (clamp to valid range 0.25-2.0)
+    // Sync music playback rate to ball speed (0 to 1)
     if (musicAudio && !musicAudio.paused) {
-        musicAudio.playbackRate = Math.max(0.25, Math.min(2.0, speedMultiplier));
+        musicAudio.playbackRate = speedMultiplier;
     }
 }
 
@@ -1336,9 +1336,8 @@ function togglePlayPause() {
             startAudioLoop();
         }
 
-        // Fade music back in if it was playing
+        // Fade music back in (playbackRate ramps up with speedMultiplier)
         if (musicAudio && musicGain && audioContext) {
-            musicAudio.playbackRate = 1.0; // Reset to normal speed
             musicGain.gain.setTargetAtTime(settings.musicVolume / 100, audioContext.currentTime, 0.3);
             if (musicAudio.paused) {
                 musicAudio.play().catch(() => {});
