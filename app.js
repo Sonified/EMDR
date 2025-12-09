@@ -246,8 +246,15 @@ function initAudio() {
 }
 
 // Update audio state
+let lastAudioLog = 0;
 function updateAudio() {
     if (!audioContext) return;
+
+    // Debug: log every 500ms when in background
+    if (document.hidden && Date.now() - lastAudioLog > 500) {
+        console.log('Audio update in background - virtualTime:', virtualTime.toFixed(0), 'speedMult:', speedMultiplier);
+        lastAudioLog = Date.now();
+    }
 
     if (settings.audioEnabled && speedMultiplier > 0) {
         // Use virtualTime for audio position (same as visual)
@@ -280,26 +287,10 @@ function updateAudio() {
 
 // Audio loop runs independently of animation frame
 let audioInterval = null;
-let lastAudioTimestamp = null;
 
 function startAudioLoop() {
     if (audioInterval) return;
-    lastAudioTimestamp = performance.now();
-    audioInterval = setInterval(() => {
-        const now = performance.now();
-        // Only advance virtualTime if animation loop is throttled (tab in background)
-        // Animation loop updates lastTimestamp, so if it's stale (>50ms), we're throttled
-        const animationThrottled = lastTimestamp !== null && (now - lastTimestamp) > 50;
-
-        if (animationThrottled && (isPlaying || speedMultiplier > 0)) {
-            const deltaTime = Math.min(now - lastAudioTimestamp, 100);
-            if (!isDecelerating && !waitingForEdge && speedMultiplier > 0) {
-                virtualTime += deltaTime * speedMultiplier;
-            }
-        }
-        lastAudioTimestamp = now;
-        updateAudio();
-    }, 16); // ~60fps
+    audioInterval = setInterval(updateAudio, 16); // ~60fps
 }
 
 function stopAudioLoop() {
@@ -875,5 +866,11 @@ document.getElementById('ballSizeValue').textContent = settings.ballSize;
 // Sync ball color UI with settings (for saved color)
 document.getElementById('ballColorHex').value = settings.ballColor;
 updateFavicon(settings.ballColor);
+
+// Debug: track visibility changes
+document.addEventListener('visibilitychange', () => {
+    console.log('Visibility changed:', document.hidden ? 'HIDDEN' : 'VISIBLE');
+    console.log('isPlaying:', isPlaying, 'speedMultiplier:', speedMultiplier);
+});
 
 requestAnimationFrame(animate);
