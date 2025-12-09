@@ -639,6 +639,7 @@ function animate(timestamp) {
 
 // Settings panel visibility
 let pickerOpen = false;
+let inputFocused = false;
 
 function showSettings() {
     settingsPanel.classList.remove('hidden');
@@ -647,7 +648,7 @@ function showSettings() {
         clearTimeout(mouseTimeout);
     }
 
-    if (!pickerOpen) {
+    if (!pickerOpen && !inputFocused) {
         mouseTimeout = setTimeout(() => {
             settingsPanel.classList.add('hidden');
         }, 2000);
@@ -894,6 +895,18 @@ ambientVolumeInput.addEventListener('input', (e) => {
     if (ambientGain) {
         ambientGain.gain.value = volume / 100;
     }
+});
+
+// Keep settings visible while any input/select is focused
+settingsPanel.querySelectorAll('input, select').forEach(el => {
+    el.addEventListener('focus', () => {
+        inputFocused = true;
+        if (mouseTimeout) clearTimeout(mouseTimeout);
+    });
+    el.addEventListener('blur', () => {
+        inputFocused = false;
+        showSettings();
+    });
 });
 
 // Mouse movement shows settings
