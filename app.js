@@ -177,7 +177,8 @@ let settings = {
     bgColor: '#000000',
     audioEnabled: true,
     frequency: 110,
-    toneVolume: 30
+    toneVolume: 30,
+    ambientPanAmount: 100
 };
 
 // Trail history for motion trail effect
@@ -295,7 +296,8 @@ function updateAudio() {
 
     // Pan ambient audio (works independently of oscillator)
     if (ambientPanner && speedMultiplier > 0) {
-        ambientPanner.pan.setTargetAtTime(audioPosition, audioContext.currentTime, 0.02);
+        const scaledPan = audioPosition * (settings.ambientPanAmount / 100);
+        ambientPanner.pan.setTargetAtTime(scaledPan, audioContext.currentTime, 0.02);
     }
 }
 
@@ -881,6 +883,11 @@ ambientVolumeInput.addEventListener('input', (e) => {
     if (ambientGain) {
         ambientGain.gain.value = volume / 100;
     }
+});
+
+document.getElementById('ambientPan').addEventListener('input', (e) => {
+    settings.ambientPanAmount = parseInt(e.target.value) || 100;
+    document.getElementById('ambientPanValue').textContent = settings.ambientPanAmount;
 });
 
 // Keep settings visible while any input/select is focused
