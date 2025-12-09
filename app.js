@@ -909,7 +909,11 @@ function updateReverbMix() {
 
 // Start music playback from current position (creates new BufferSourceNode)
 function startMusicPlayback() {
-    if (!musicBuffer || !audioContext || musicIsPlaying) return;
+    console.log('startMusicPlayback called', { musicBuffer: !!musicBuffer, audioContext: !!audioContext, musicIsPlaying });
+    if (!musicBuffer || !audioContext || musicIsPlaying) {
+        console.log('startMusicPlayback EARLY RETURN');
+        return;
+    }
 
     // Create new source node (can only be played once)
     musicSource = audioContext.createBufferSource();
@@ -925,9 +929,10 @@ function startMusicPlayback() {
         musicGain.connect(masterGain);
     }
 
-    // Start gain at 0 to avoid click, then ramp up
+    // Cancel any scheduled fade-out, then ramp up over RAMP_DURATION
+    musicGain.gain.cancelScheduledValues(audioContext.currentTime);
     musicGain.gain.setValueAtTime(0, audioContext.currentTime);
-    musicGain.gain.linearRampToValueAtTime(settings.musicVolume / 100, audioContext.currentTime + 0.3);
+    musicGain.gain.linearRampToValueAtTime(settings.musicVolume / 100, audioContext.currentTime + RAMP_DURATION / 1000);
 
     musicSource.connect(musicPanner);
 
@@ -935,11 +940,16 @@ function startMusicPlayback() {
     musicSource.start(0, musicPausedAt % musicBuffer.duration);
     musicStartTime = audioContext.currentTime;
     musicIsPlaying = true;
+    console.log('startMusicPlayback SUCCESS', { musicIsPlaying, gainValue: musicGain.gain.value });
 }
 
 // Stop music playback and save position
 function stopMusicPlayback() {
-    if (!musicSource || !musicIsPlaying) return;
+    console.log('stopMusicPlayback called', { musicSource: !!musicSource, musicIsPlaying });
+    if (!musicSource || !musicIsPlaying) {
+        console.log('stopMusicPlayback EARLY RETURN');
+        return;
+    }
 
     // Calculate current position accounting for playback rate changes
     const elapsed = audioContext.currentTime - musicStartTime;
