@@ -915,16 +915,20 @@ function startMusicPlayback() {
     musicSource = audioContext.createBufferSource();
     musicSource.buffer = musicBuffer;
     musicSource.loop = true;
-    musicSource.playbackRate.value = speedMultiplier || 0.001; // Avoid 0
+    musicSource.playbackRate.value = Math.max(0.01, speedMultiplier); // Min 0.01 to avoid artifacts
 
     // Connect through panner and gain
     if (!musicPanner) {
         musicPanner = audioContext.createStereoPanner();
         musicGain = audioContext.createGain();
-        musicGain.gain.value = settings.musicVolume / 100;
         musicPanner.connect(musicGain);
         musicGain.connect(masterGain);
     }
+
+    // Start gain at 0 to avoid click, then ramp up
+    musicGain.gain.setValueAtTime(0, audioContext.currentTime);
+    musicGain.gain.linearRampToValueAtTime(settings.musicVolume / 100, audioContext.currentTime + 0.3);
+
     musicSource.connect(musicPanner);
 
     // Start from paused position
@@ -950,7 +954,7 @@ function stopMusicPlayback() {
 // Update music playback rate (true sample-rate change = pitch shifts with speed)
 function updateMusicPlaybackRate(rate) {
     if (musicSource && musicIsPlaying) {
-        musicSource.playbackRate.value = Math.max(0.001, rate); // Avoid 0
+        musicSource.playbackRate.value = Math.max(0.01, rate); // Min 0.01 to avoid artifacts
     }
 }
 
@@ -1384,9 +1388,8 @@ function togglePlayPause() {
             startAudioLoop();
         }
 
-        // Start music playback (will ramp up with speedMultiplier)
-        if (musicBuffer && musicGain && audioContext) {
-            musicGain.gain.setTargetAtTime(settings.musicVolume / 100, audioContext.currentTime, 0.3);
+        // Start music playback (fade-in handled in startMusicPlayback)
+        if (musicBuffer && audioContext) {
             startMusicPlayback();
         }
 
@@ -1397,12 +1400,13 @@ function togglePlayPause() {
     } else {
         // Fade out and stop music
         if (musicGain && audioContext && musicIsPlaying) {
-            musicGain.gain.setTargetAtTime(0, audioContext.currentTime, 0.3);
+            musicGain.gain.setValueAtTime(musicGain.gain.value, audioContext.currentTime);
+            musicGain.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.3);
             setTimeout(() => {
                 if (!isPlaying) {
                     stopMusicPlayback();
                 }
-            }, 400);
+            }, 350);
         }
 
         const headingToZero = isHeadingTowardZero();
@@ -2022,20 +2026,20 @@ function toggleAudio() {
             audioContext.resume();
         }
         startAudioLoop();
-        // Resume music if it was playing
-        if (musicBuffer && !musicIsPlaying && musicGain && audioContext) {
-            musicGain.gain.setTargetAtTime(settings.musicVolume / 100, audioContext.currentTime, 0.3);
+        // Resume music if it was playing (fade-in handled in startMusicPlayback)
+        if (musicBuffer && !musicIsPlaying && audioContext) {
             startMusicPlayback();
         }
     } else {
         // Fade out and stop music
         if (audioContext && musicIsPlaying && musicGain) {
-            musicGain.gain.setTargetAtTime(0, audioContext.currentTime, 0.3);
+            musicGain.gain.setValueAtTime(musicGain.gain.value, audioContext.currentTime);
+            musicGain.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.3);
             setTimeout(() => {
                 if (!settings.audioEnabled) {
                     stopMusicPlayback();
                 }
-            }, 400);
+            }, 350);
         }
     }
     updateAudio();
