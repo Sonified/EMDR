@@ -886,7 +886,7 @@ ambientVolumeInput.addEventListener('input', (e) => {
 });
 
 document.getElementById('ambientPan').addEventListener('input', (e) => {
-    settings.ambientPanAmount = parseInt(e.target.value) || 100;
+    settings.ambientPanAmount = parseInt(e.target.value);
     document.getElementById('ambientPanValue').textContent = settings.ambientPanAmount;
 });
 
