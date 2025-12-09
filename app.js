@@ -2,6 +2,18 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
+// Dynamic favicon
+function updateFavicon(color) {
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
+        <circle cx='50' cy='50' r='45' fill='${color}'/>
+    </svg>`;
+    const encoded = encodeURIComponent(svg);
+    const link = document.querySelector("link[rel='icon']");
+    if (link) {
+        link.href = `data:image/svg+xml,${encoded}`;
+    }
+}
+
 // Three.js setup for fluid effect
 let threeRenderer, threeScene, threeCamera, fluidMaterial;
 let fluidCanvas = null;
@@ -638,6 +650,7 @@ ballColorPicker.on('change', (color) => {
     document.getElementById('ballColorHex').value = hex;
     ballColorPicker.applyColor();
     localStorage.setItem('emdr_ballColor', hex);
+    updateFavicon(hex);
 });
 
 ballColorPicker.on('save', () => {
@@ -691,6 +704,7 @@ document.getElementById('ballColorHex').addEventListener('input', (e) => {
         settings.ballColor = hex;
         ballColorPicker.setColor(hex);
         localStorage.setItem('emdr_ballColor', hex);
+        updateFavicon(hex);
     }
 });
 
@@ -843,5 +857,6 @@ document.getElementById('ballSizeValue').textContent = settings.ballSize;
 
 // Sync ball color UI with settings (for saved color)
 document.getElementById('ballColorHex').value = settings.ballColor;
+updateFavicon(settings.ballColor);
 
 requestAnimationFrame(animate);
