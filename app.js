@@ -147,28 +147,205 @@ function renderFluid() {
     threeRenderer.render(threeScene, threeCamera);
 }
 
-// Settings elements
+// Settings elements (refreshed when UI is regenerated)
 const settingsPanel = document.getElementById('settings');
-const speedInput = document.getElementById('speed');
-const ballSizeInput = document.getElementById('ballSize');
-const ballStyleSelect = document.getElementById('ballStyle');
-const glowEnabledInput = document.getElementById('glowEnabled');
-const trailStyleSelect = document.getElementById('trailStyle');
-const audioEnabledInput = document.getElementById('audioEnabled');
-const frequencyInput = document.getElementById('frequency');
+let speedInput, ballSizeInput, ballStyleSelect, glowEnabledInput;
+let trailStyleSelect, audioEnabledInput, frequencyInput;
+
+// Custom Color Wheel Picker
+class ColorWheel {
+    constructor(canvasId, options = {}) {
+        this.canvas = document.getElementById(canvasId);
+        if (!this.canvas) return;
+
+        this.ctx = this.canvas.getContext('2d');
+        this.size = this.canvas.width;
+        this.center = this.size / 2;
+        this.radius = this.size / 2 - 5;
+
+        this.hue = options.hue || 0;
+        this.saturation = options.saturation || 100;
+        this.lightness = options.lightness || 50;
+        this.onChange = options.onChange || (() => {});
+
+        this.isDragging = false;
+        this.draw();
+        this.attachEvents();
+    }
+
+    draw() {
+        const ctx = this.ctx;
+        const center = this.center;
+        const radius = this.radius;
+
+        ctx.clearRect(0, 0, this.size, this.size);
+
+        // Draw color wheel
+        for (let angle = 0; angle < 360; angle++) {
+            const startAngle = (angle - 1) * Math.PI / 180;
+            const endAngle = (angle + 1) * Math.PI / 180;
+
+            ctx.beginPath();
+            ctx.moveTo(center, center);
+            ctx.arc(center, center, radius, startAngle, endAngle);
+            ctx.closePath();
+
+            // Create gradient from center (white/gray) to edge (full saturation)
+            const gradient = ctx.createRadialGradient(center, center, 0, center, center, radius);
+            gradient.addColorStop(0, `hsl(${angle}, 0%, ${this.lightness}%)`);
+            gradient.addColorStop(1, `hsl(${angle}, 100%, ${this.lightness}%)`);
+            ctx.fillStyle = gradient;
+            ctx.fill();
+        }
+
+        // Draw selection indicator
+        const selectedAngle = this.hue * Math.PI / 180;
+        const selectedRadius = (this.saturation / 100) * radius;
+        const x = center + Math.cos(selectedAngle) * selectedRadius;
+        const y = center + Math.sin(selectedAngle) * selectedRadius;
+
+        ctx.beginPath();
+        ctx.arc(x, y, 8, 0, Math.PI * 2);
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x, y, 6, 0, Math.PI * 2);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    }
+
+    getColorFromPosition(x, y) {
+        const dx = x - this.center;
+        const dy = y - this.center;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        if (distance > this.radius) return null;
+
+        let angle = Math.atan2(dy, dx) * 180 / Math.PI;
+        if (angle < 0) angle += 360;
+
+        const saturation = Math.min(100, (distance / this.radius) * 100);
+
+        return { hue: angle, saturation };
+    }
+
+    handleInput(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const x = (e.clientX || e.touches[0].clientX) - rect.left;
+        const y = (e.clientY || e.touches[0].clientY) - rect.top;
+
+        const color = this.getColorFromPosition(x, y);
+        if (color) {
+            this.hue = color.hue;
+            this.saturation = color.saturation;
+            this.draw();
+            this.onChange(this.getHex());
+        }
+    }
+
+    attachEvents() {
+        const startDrag = (e) => {
+            e.preventDefault();
+            this.isDragging = true;
+            this.handleInput(e);
+        };
+
+        const moveDrag = (e) => {
+            if (!this.isDragging) return;
+            e.preventDefault();
+            this.handleInput(e);
+        };
+
+        const endDrag = () => {
+            this.isDragging = false;
+        };
+
+        this.canvas.addEventListener('mousedown', startDrag);
+        this.canvas.addEventListener('touchstart', startDrag, { passive: false });
+
+        document.addEventListener('mousemove', moveDrag);
+        document.addEventListener('touchmove', moveDrag, { passive: false });
+
+        document.addEventListener('mouseup', endDrag);
+        document.addEventListener('touchend', endDrag);
+    }
+
+    setLightness(l) {
+        this.lightness = l;
+        this.draw();
+        this.onChange(this.getHex());
+    }
+
+    setColor(hex) {
+        const hsl = this.hexToHsl(hex);
+        if (hsl) {
+            this.hue = hsl.h;
+            this.saturation = hsl.s;
+            this.lightness = hsl.l;
+            this.draw();
+        }
+    }
+
+    getHex() {
+        return this.hslToHex(this.hue, this.saturation, this.lightness);
+    }
+
+    hslToHex(h, s, l) {
+        s /= 100;
+        l /= 100;
+        const a = s * Math.min(l, 1 - l);
+        const f = n => {
+            const k = (n + h / 30) % 12;
+            const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+            return Math.round(255 * color).toString(16).padStart(2, '0');
+        };
+        return `#${f(0)}${f(8)}${f(4)}`;
+    }
+
+    hexToHsl(hex) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        if (!result) return null;
+
+        let r = parseInt(result[1], 16) / 255;
+        let g = parseInt(result[2], 16) / 255;
+        let b = parseInt(result[3], 16) / 255;
+
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h, s, l = (max + min) / 2;
+
+        if (max === min) {
+            h = s = 0;
+        } else {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+                case g: h = ((b - r) / d + 2) / 6; break;
+                case b: h = ((r - g) / d + 4) / 6; break;
+            }
+            h *= 360;
+        }
+
+        return { h, s: s * 100, l: l * 100 };
+    }
+}
+
+// Color picker instances
+let ballColorWheel = null;
+let bgColorWheel = null;
+let activeColorPopup = null; // Track which popup is open
 
 // Detect mobile
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
 
-// Load saved ball color from localStorage
-const savedBallColor = localStorage.getItem('emdr_ballColor') || '#db4343';
-
-// State
-let settings = {
+// Default settings (can be overridden by localStorage)
+const defaultSettings = {
     cyclesPerMinute: 40,
     motionType: 'sine',
     ballSize: isMobile ? 30 : 60,
-    ballColor: savedBallColor,
+    ballColor: '#db4343',
     ballStyle: 'sphere',
     glowEnabled: false,
     trailStyle: 'none',
@@ -179,11 +356,365 @@ let settings = {
     frequency: 110,
     toneVolume: 30,
     tonePanAmount: 100,
-    ambientPanAmount: 100
+    musicPanAmount: 80,
+    musicVolume: 50,
+    waveSpeed: 0.3,
+    waveDamping: 0.988,
+    waveForce: 0.15,
+    waveSourceSize: 10,
+    waveGridSize: 256,
+    simSteps: 1,
+    edgeReflect: 0,
+    edgeBoundary: 3,
+    reverbEnabled: false,
+    reverbType: 'room',
+    reverbMix: 15,
+    reverbDecay: 2.0
 };
+
+// Load settings from localStorage, falling back to defaults
+function loadSettings() {
+    const saved = localStorage.getItem('emdr_settings');
+    if (saved) {
+        try {
+            const parsed = JSON.parse(saved);
+            return { ...defaultSettings, ...parsed };
+        } catch (e) {
+            console.warn('Failed to parse saved settings, using defaults');
+        }
+    }
+    return { ...defaultSettings };
+}
+
+// Save settings to localStorage
+function saveSettings() {
+    localStorage.setItem('emdr_settings', JSON.stringify(settingsData));
+}
+
+// Clear saved settings (reset to defaults)
+function resetSettings() {
+    localStorage.removeItem('emdr_settings');
+    location.reload();
+}
+
+// State (loaded from localStorage or defaults)
+const settingsData = loadSettings();
+
+// Proxy to auto-save on any change
+const settings = new Proxy(settingsData, {
+    set(target, prop, value) {
+        target[prop] = value;
+        saveSettings();
+        return true;
+    }
+});
 
 // Trail history for motion trail effect
 const trailHistory = [];
+
+// Wave equation simulation (WebGL)
+let waveRenderer, waveScene, waveCamera, waveDisplayScene;
+let waveRenderTargets = [null, null];
+let currentWaveTarget = 0;
+let waveSimMaterial, waveDisplayMaterial;
+let waveQuad, waveDisplayQuad;
+let waveCanvas = null;
+let waveInitialized = false;
+
+function initWaveEquation() {
+    if (waveInitialized) return;
+
+    // Create separate canvas for wave WebGL
+    waveCanvas = document.createElement('canvas');
+    waveCanvas.id = 'waveCanvas';
+    waveCanvas.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:0;';
+    document.body.insertBefore(waveCanvas, canvas);
+
+    waveRenderer = new THREE.WebGLRenderer({ canvas: waveCanvas, alpha: true });
+    waveRenderer.setSize(window.innerWidth, window.innerHeight);
+    waveRenderer.setPixelRatio(1); // Use 1 for simulation, display scales up
+
+    // Create render targets for ping-pong (RGBA Float)
+    // R = current height, G = previous height
+    const rtOptions = {
+        minFilter: THREE.LinearFilter,
+        magFilter: THREE.LinearFilter,
+        format: THREE.RGBAFormat,
+        type: THREE.FloatType
+    };
+    const gridSize = settings.waveGridSize;
+    waveRenderTargets[0] = new THREE.WebGLRenderTarget(gridSize, gridSize, rtOptions);
+    waveRenderTargets[1] = new THREE.WebGLRenderTarget(gridSize, gridSize, rtOptions);
+
+    // Scene for simulation (renders to texture)
+    waveScene = new THREE.Scene();
+    waveCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+    // Wave simulation shader (ping-pong)
+    const waveSimVertex = `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = vec4(position, 1.0);
+        }
+    `;
+
+    // Wave equation shader:
+    // Laplacian = left + right + up + down - 4*center
+    // Verlet: next = current + (current - previous) + c² * laplacian
+    // With damping and forcing
+    const waveSimFragment = `
+        precision highp float;
+        varying vec2 vUv;
+
+        uniform sampler2D uPrevState;  // R = current, G = previous
+        uniform vec2 uResolution;      // Grid resolution
+        uniform float uWaveSpeed;      // c² term (keep < 0.5 for CFL stability)
+        uniform float uDamping;        // Damping factor (0.99 = slow decay)
+        uniform vec2 uBallPos;         // Ball position in UV space (0-1)
+        uniform float uBallRadius;     // Ball radius in UV space
+        uniform float uForceStrength;  // Forcing amplitude
+        uniform float uEdgeReflect;    // 0 = absorb, 1 = full reflection
+        uniform float uEdgeBoundary;   // Edge boundary width (0-0.15)
+
+        void main() {
+            vec2 texel = 1.0 / uResolution;
+
+            // Sample current and neighboring cells
+            vec4 state = texture2D(uPrevState, vUv);
+            float current = state.r;
+            float previous = state.g;
+
+            // Get neighbors for Laplacian (with reflection at boundaries)
+            vec2 leftUv = vUv + vec2(-texel.x, 0.0);
+            vec2 rightUv = vUv + vec2(texel.x, 0.0);
+            vec2 upUv = vUv + vec2(0.0, texel.y);
+            vec2 downUv = vUv + vec2(0.0, -texel.y);
+
+            // Reflect coordinates at boundaries for reflection mode
+            leftUv.x = leftUv.x < 0.0 ? -leftUv.x : leftUv.x;
+            rightUv.x = rightUv.x > 1.0 ? 2.0 - rightUv.x : rightUv.x;
+            upUv.y = upUv.y > 1.0 ? 2.0 - upUv.y : upUv.y;
+            downUv.y = downUv.y < 0.0 ? -downUv.y : downUv.y;
+
+            float left = texture2D(uPrevState, leftUv).r;
+            float right = texture2D(uPrevState, rightUv).r;
+            float up = texture2D(uPrevState, upUv).r;
+            float down = texture2D(uPrevState, downUv).r;
+
+            // Discrete Laplacian
+            float laplacian = left + right + up + down - 4.0 * current;
+
+            // Verlet integration: next = 2*current - previous + c²*laplacian
+            // Which is: next = current + (current - previous) + c²*laplacian
+            float velocity = current - previous;
+            float acceleration = uWaveSpeed * laplacian;
+            float next = current + velocity * uDamping + acceleration;
+
+            // Apply forcing from ball position (creates waves)
+            float dist = length(vUv - uBallPos);
+            if (dist < uBallRadius) {
+                float falloff = 1.0 - (dist / uBallRadius);
+                falloff = falloff * falloff; // Quadratic falloff
+                next += uForceStrength * falloff;
+            }
+
+            // Boundary conditions: blend between absorb and reflect
+            float edgeDist = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
+            float edgeDamp = smoothstep(0.0, uEdgeBoundary, edgeDist);
+            // Mix between damped (absorbed) and undamped (reflected)
+            next = mix(next * edgeDamp, next, uEdgeReflect);
+
+            // Store: R = new current (next), G = old current (now previous)
+            gl_FragColor = vec4(next, current, 0.0, 1.0);
+        }
+    `;
+
+    waveSimMaterial = new THREE.ShaderMaterial({
+        vertexShader: waveSimVertex,
+        fragmentShader: waveSimFragment,
+        uniforms: {
+            uPrevState: { value: null },
+            uResolution: { value: new THREE.Vector2(gridSize, gridSize) },
+            uWaveSpeed: { value: 0.3 },  // c², keep < 0.5 for stability
+            uDamping: { value: 0.995 },  // Slight damping
+            uBallPos: { value: new THREE.Vector2(0.5, 0.5) },
+            uBallRadius: { value: 0.05 },
+            uForceStrength: { value: 0.0 },
+            uEdgeReflect: { value: 0.0 },
+            uEdgeBoundary: { value: 0.03 }
+        }
+    });
+
+    const simGeometry = new THREE.PlaneGeometry(2, 2);
+    waveQuad = new THREE.Mesh(simGeometry, waveSimMaterial);
+    waveScene.add(waveQuad);
+
+    // Display scene (renders wave heights to screen)
+    waveDisplayScene = new THREE.Scene();
+
+    const waveDisplayVertex = `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = vec4(position, 1.0);
+        }
+    `;
+
+    const waveDisplayFragment = `
+        precision highp float;
+        varying vec2 vUv;
+
+        uniform sampler2D uWaveState;
+        uniform vec3 uColor;
+        uniform float uOpacity;
+        uniform vec2 uResolution;
+
+        void main() {
+            vec2 texel = 1.0 / uResolution;
+
+            // Sample neighbors to compute gradient
+            float left = texture2D(uWaveState, vUv + vec2(-texel.x, 0.0)).r;
+            float right = texture2D(uWaveState, vUv + vec2(texel.x, 0.0)).r;
+            float up = texture2D(uWaveState, vUv + vec2(0.0, texel.y)).r;
+            float down = texture2D(uWaveState, vUv + vec2(0.0, -texel.y)).r;
+
+            // Gradient shows wave fronts (where waves are moving)
+            vec2 gradient = vec2(right - left, up - down);
+            float steepness = length(gradient) * 15.0;  // Amplify for visibility
+
+            // Add subtle highlights for steep gradients
+            float highlight = smoothstep(0.3, 0.8, steepness);
+            vec3 color = mix(uColor, vec3(1.0), highlight * 0.3);
+
+            float alpha = min(steepness * uOpacity, 1.0);
+
+            gl_FragColor = vec4(color, alpha);
+        }
+    `;
+
+    waveDisplayMaterial = new THREE.ShaderMaterial({
+        vertexShader: waveDisplayVertex,
+        fragmentShader: waveDisplayFragment,
+        uniforms: {
+            uWaveState: { value: null },
+            uColor: { value: new THREE.Vector3(1, 0, 0) },
+            uOpacity: { value: 0.5 },
+            uResolution: { value: new THREE.Vector2(gridSize, gridSize) }
+        },
+        transparent: true,
+        depthTest: false
+    });
+
+    const displayGeometry = new THREE.PlaneGeometry(2, 2);
+    waveDisplayQuad = new THREE.Mesh(displayGeometry, waveDisplayMaterial);
+    waveDisplayScene.add(waveDisplayQuad);
+
+    waveInitialized = true;
+}
+
+// Resize wave grid (called when waveGridSize setting changes)
+function resizeWaveGrid() {
+    if (!waveInitialized) return;
+
+    const gridSize = settings.waveGridSize;
+
+    // Dispose old render targets
+    if (waveRenderTargets[0]) waveRenderTargets[0].dispose();
+    if (waveRenderTargets[1]) waveRenderTargets[1].dispose();
+
+    // Create new render targets with new size
+    const rtOptions = {
+        minFilter: THREE.LinearFilter,
+        magFilter: THREE.LinearFilter,
+        format: THREE.RGBAFormat,
+        type: THREE.FloatType
+    };
+    waveRenderTargets[0] = new THREE.WebGLRenderTarget(gridSize, gridSize, rtOptions);
+    waveRenderTargets[1] = new THREE.WebGLRenderTarget(gridSize, gridSize, rtOptions);
+    currentWaveTarget = 0;
+
+    // Update resolution uniforms
+    waveSimMaterial.uniforms.uResolution.value.set(gridSize, gridSize);
+    waveDisplayMaterial.uniforms.uResolution.value.set(gridSize, gridSize);
+}
+
+// Track previous ball position for velocity calculation
+let prevBallX = null;
+let prevBallY = null;
+
+function updateWaveSimulation(ballX, ballY) {
+    if (!waveInitialized || !waveSimMaterial) return;
+
+    // Calculate ball velocity - only create waves when ball is actually moving
+    let forceStrength = 0;
+    let dx = 0;
+    if (prevBallX !== null && prevBallY !== null) {
+        dx = ballX - prevBallX;
+        const dy = ballY - prevBallY;
+        const velocity = Math.sqrt(dx * dx + dy * dy);
+
+        // Scale force by velocity - faster movement = stronger waves
+        // Normalize by screen width to get consistent behavior
+        const normalizedVelocity = velocity / window.innerWidth;
+        forceStrength = normalizedVelocity * settings.waveForce * 50;
+    }
+    prevBallX = ballX;
+    prevBallY = ballY;
+
+    // Offset source toward leading edge of ball based on movement direction
+    // const offset = settings.ballSize * 0.5; // Half radius for subtler effect
+    let sourceX = ballX;
+    // if (dx > 0.1) {
+    //     sourceX = ballX + offset; // Moving right, source offset right
+    // } else if (dx < -0.1) {
+    //     sourceX = ballX - offset; // Moving left, source offset left
+    // }
+
+    // Convert source position to UV space (0-1)
+    const uvX = sourceX / window.innerWidth;
+    const uvY = 1.0 - (ballY / window.innerHeight); // Flip Y for WebGL
+
+    waveSimMaterial.uniforms.uBallPos.value.set(uvX, uvY);
+    // Wave source size is independent of ball size - use waveSourceSize as percentage of screen
+    waveSimMaterial.uniforms.uBallRadius.value = (settings.waveSourceSize / 100) * 0.1;
+
+    waveSimMaterial.uniforms.uForceStrength.value = forceStrength;
+
+    // Update colors
+    const rgb = hexToRgb(settings.ballColor);
+    waveDisplayMaterial.uniforms.uColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b / 255);
+    waveDisplayMaterial.uniforms.uOpacity.value = settings.trailOpacity / 100;
+
+    // Run simulation steps (multiple steps per frame for higher precision)
+    for (let step = 0; step < settings.simSteps; step++) {
+        const readTarget = waveRenderTargets[currentWaveTarget];
+        const writeTarget = waveRenderTargets[1 - currentWaveTarget];
+
+        waveSimMaterial.uniforms.uPrevState.value = readTarget.texture;
+
+        waveRenderer.setRenderTarget(writeTarget);
+        waveRenderer.render(waveScene, waveCamera);
+
+        // Swap buffers
+        currentWaveTarget = 1 - currentWaveTarget;
+    }
+}
+
+function renderWaveEquation() {
+    if (!waveInitialized || settings.trailStyle !== 'ripple') {
+        if (waveCanvas) waveCanvas.style.display = 'none';
+        return;
+    }
+
+    waveCanvas.style.display = 'block';
+
+    // Render final wave state to screen
+    waveDisplayMaterial.uniforms.uWaveState.value = waveRenderTargets[currentWaveTarget].texture;
+
+    waveRenderer.setRenderTarget(null);
+    waveRenderer.render(waveDisplayScene, waveCamera);
+}
 
 let ballPosition = 0; // -1 to 1 (left to right)
 let mouseTimeout = null;
@@ -204,6 +735,7 @@ let decelStartPosition = 0; // position when decel started (for distance-based s
 let waitingForEdge = false; // if true, we're heading to edge first before decelerating
 
 const playPauseBtn = document.getElementById('playPauseBtn');
+const audioBtn = document.getElementById('audioBtn');
 
 // Audio context and nodes
 let audioContext = null;
@@ -211,11 +743,92 @@ let oscillator = null;
 let panner = null;
 let gainNode = null;
 
-// Ambient audio with panning
-let ambientAudio = null;
-let ambientSource = null;
-let ambientPanner = null;
-let ambientGain = null;
+// Music audio with panning
+let musicAudio = null;
+let musicSource = null;
+let musicPanner = null;
+let musicGain = null;
+
+// Reverb nodes
+let reverbConvolver = null;
+let reverbDryGain = null;
+let reverbWetGain = null;
+let masterGain = null;
+
+// Generate impulse response for reverb
+function createReverbImpulse(audioCtx, type, decay) {
+    const sampleRate = audioCtx.sampleRate;
+
+    // Different reverb types have different characteristics
+    const presets = {
+        room: { duration: decay * 0.7, earlyDelay: 0.01, diffusion: 0.7, damping: 0.3 },
+        hall: { duration: decay * 1.2, earlyDelay: 0.03, diffusion: 0.85, damping: 0.15 },
+        plate: { duration: decay * 0.9, earlyDelay: 0.005, diffusion: 0.95, damping: 0.1 },
+        cathedral: { duration: decay * 1.5, earlyDelay: 0.05, diffusion: 0.9, damping: 0.08 }
+    };
+
+    const preset = presets[type] || presets.room;
+    const duration = Math.min(preset.duration, 6);
+    const length = sampleRate * duration;
+    const impulse = audioCtx.createBuffer(2, length, sampleRate);
+
+    for (let channel = 0; channel < 2; channel++) {
+        const channelData = impulse.getChannelData(channel);
+
+        for (let i = 0; i < length; i++) {
+            const t = i / sampleRate;
+            const progress = i / length;
+
+            // Exponential decay envelope
+            const envelope = Math.exp(-t / (decay * 0.5));
+
+            // High frequency damping over time
+            const dampingFactor = 1 - (progress * preset.damping);
+
+            // Generate noise with diffusion characteristics
+            let sample = (Math.random() * 2 - 1);
+
+            // Add early reflections for more realistic sound
+            if (t < preset.earlyDelay * 3) {
+                const earlyAmp = Math.exp(-t / preset.earlyDelay) * 0.5;
+                sample += (Math.random() * 2 - 1) * earlyAmp;
+            }
+
+            // Apply diffusion (smoothing for more natural reverb)
+            if (preset.diffusion > 0.5 && i > 0) {
+                sample = sample * (1 - preset.diffusion * 0.3) + channelData[i - 1] * preset.diffusion * 0.3;
+            }
+
+            // Stereo decorrelation (slight offset between channels)
+            const stereoOffset = channel === 0 ? 1 : 0.97;
+
+            channelData[i] = sample * envelope * dampingFactor * stereoOffset;
+        }
+    }
+
+    return impulse;
+}
+
+// Update reverb impulse response
+function updateReverbImpulse() {
+    if (!audioContext || !reverbConvolver) return;
+
+    const impulse = createReverbImpulse(audioContext, settings.reverbType, settings.reverbDecay);
+    reverbConvolver.buffer = impulse;
+}
+
+// Update reverb mix (wet/dry)
+function updateReverbMix() {
+    if (!reverbDryGain || !reverbWetGain || !audioContext) return;
+
+    const mixRatio = settings.reverbMix / 100;
+    // Equal power crossfade for smoother mixing
+    const dry = Math.cos(mixRatio * Math.PI / 2);
+    const wet = Math.sin(mixRatio * Math.PI / 2) * 1.5; // Boost wet signal
+
+    reverbDryGain.gain.setTargetAtTime(dry, audioContext.currentTime, 0.05);
+    reverbWetGain.gain.setTargetAtTime(wet, audioContext.currentTime, 0.05);
+}
 
 // Resize canvas to fill window
 function resizeCanvas() {
@@ -229,17 +842,58 @@ function resizeCanvas() {
             fluidMaterial.uniforms.resolution.value.set(window.innerWidth, window.innerHeight);
         }
     }
+
+    // Resize wave equation renderer if initialized
+    if (waveRenderer) {
+        waveRenderer.setSize(window.innerWidth, window.innerHeight);
+    }
 }
 
-// Initialize audio
-function initAudio() {
+// Initialize audio context and reverb chain (shared by all audio)
+function initAudioContext() {
     if (audioContext) return;
 
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
+    // Create master gain node (all audio goes through this)
+    masterGain = audioContext.createGain();
+    masterGain.gain.value = 1;
+
+    // Create reverb nodes
+    reverbConvolver = audioContext.createConvolver();
+    reverbDryGain = audioContext.createGain();
+    reverbWetGain = audioContext.createGain();
+
+    // Set initial reverb impulse
+    updateReverbImpulse();
+
+    // Reverb routing: master -> dry/wet split -> destination
+    masterGain.connect(reverbDryGain);
+    masterGain.connect(reverbConvolver);
+    reverbConvolver.connect(reverbWetGain);
+    reverbDryGain.connect(audioContext.destination);
+    reverbWetGain.connect(audioContext.destination);
+
+    // Set initial mix (dry = 1, wet = 0 when disabled)
+    if (settings.reverbEnabled) {
+        updateReverbMix();
+    } else {
+        reverbDryGain.gain.value = 1;
+        reverbWetGain.gain.value = 0;
+    }
+}
+
+// Initialize panning tone oscillator
+function initOscillator() {
+    if (oscillator) return;
+
+    // Ensure audio context exists
+    initAudioContext();
+
+    // Create oscillator chain
     oscillator = audioContext.createOscillator();
     oscillator.type = 'sine';
-    oscillator.frequency.value = settings.frequency;
+    oscillator.frequency.value = Math.max(20, settings.frequency);
 
     panner = audioContext.createStereoPanner();
     panner.pan.value = 0;
@@ -249,21 +903,20 @@ function initAudio() {
 
     oscillator.connect(panner);
     panner.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+    gainNode.connect(masterGain);
 
     oscillator.start();
 }
 
+// Initialize audio (legacy wrapper)
+function initAudio() {
+    initAudioContext();
+    initOscillator();
+}
+
 // Update audio state
-let lastAudioLog = 0;
 function updateAudio() {
     if (!audioContext) return;
-
-    // Debug: log every 500ms when in background
-    if (document.hidden && Date.now() - lastAudioLog > 500) {
-        console.log('Audio update in background - virtualTime:', virtualTime.toFixed(0), 'speedMult:', speedMultiplier);
-        lastAudioLog = Date.now();
-    }
 
     // Calculate audio position for panning
     const cyclesPerSecond = settings.cyclesPerMinute / 60;
@@ -288,18 +941,19 @@ function updateAudio() {
         if (settings.audioEnabled && speedMultiplier > 0) {
             const toneVol = (settings.toneVolume / 100) * speedMultiplier;
             const scaledTonePan = audioPosition * (settings.tonePanAmount / 100);
+            const freq = Math.max(20, settings.frequency); // Clamp to audible range
             gainNode.gain.setTargetAtTime(toneVol, audioContext.currentTime, 0.1);
             panner.pan.setTargetAtTime(scaledTonePan, audioContext.currentTime, 0.02);
-            oscillator.frequency.setTargetAtTime(settings.frequency, audioContext.currentTime, 0.1);
+            oscillator.frequency.setTargetAtTime(freq, audioContext.currentTime, 0.1);
         } else {
             gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
         }
     }
 
-    // Pan ambient audio (works independently of oscillator)
-    if (ambientPanner && speedMultiplier > 0) {
-        const scaledPan = audioPosition * (settings.ambientPanAmount / 100);
-        ambientPanner.pan.setTargetAtTime(scaledPan, audioContext.currentTime, 0.02);
+    // Pan music audio (works independently of oscillator)
+    if (musicPanner && speedMultiplier > 0) {
+        const scaledPan = audioPosition * (settings.musicPanAmount / 100);
+        musicPanner.pan.setTargetAtTime(scaledPan, audioContext.currentTime, 0.02);
     }
 }
 
@@ -470,9 +1124,14 @@ function draw() {
     const width = canvas.width;
     const height = canvas.height;
 
-    // Clear with background color
-    ctx.fillStyle = settings.bgColor;
-    ctx.fillRect(0, 0, width, height);
+    // Clear canvas - use transparent when ripple mode so waves show through
+    if (settings.trailStyle === 'ripple') {
+        ctx.clearRect(0, 0, width, height);
+        document.body.style.backgroundColor = settings.bgColor;
+    } else {
+        ctx.fillStyle = settings.bgColor;
+        ctx.fillRect(0, 0, width, height);
+    }
 
     // Calculate ball screen position
     const ballRadius = settings.ballSize;
@@ -493,7 +1152,7 @@ function draw() {
     }
 
     // Draw motion trail (Canvas 2D - basic and 3d styles only)
-    if (settings.trailStyle !== 'none' && settings.trailStyle !== 'fluid' && trailHistory.length > 1) {
+    if (settings.trailStyle !== 'none' && settings.trailStyle !== 'fluid' && settings.trailStyle !== 'ripple' && trailHistory.length > 1) {
         const rgb = hexToRgb(settings.ballColor);
         const maxAlpha = settings.trailOpacity / 100;
 
@@ -518,6 +1177,11 @@ function draw() {
             ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
             ctx.fill();
         }
+    }
+
+    // Update wave equation simulation (WebGL)
+    if (settings.trailStyle === 'ripple') {
+        updateWaveSimulation(ballX, ballY);
     }
 
     // Draw glow effect
@@ -581,13 +1245,16 @@ function togglePlayPause() {
         isDecelerating = false;
         waitingForEdge = false;
 
-        // Initialize audio on first play if enabled
+        // Initialize audio on first play if tone enabled
         if (settings.audioEnabled && !audioContext) {
             initAudio();
-            startAudioLoop();
         }
         if (audioContext && audioContext.state === 'suspended') {
             audioContext.resume();
+        }
+        // Always start audio loop if we have audio context (needed for music panning too)
+        if (audioContext) {
+            startAudioLoop();
         }
 
         // Start speed ramp UP
@@ -618,11 +1285,12 @@ function animate(timestamp) {
     }
     draw();
     renderFluid();
+    renderWaveEquation();
     requestAnimationFrame(animate);
 }
 
 // Settings panel visibility
-let pickerOpen = false;
+let pickerIsOpen = false; // Simple flag: is ANY picker currently open?
 let inputFocused = false;
 
 function showSettings() {
@@ -632,298 +1300,544 @@ function showSettings() {
         clearTimeout(mouseTimeout);
     }
 
-    if (!pickerOpen && !inputFocused) {
+    // Don't start hide timeout if picker is open or input is focused
+    if (!pickerIsOpen && !inputFocused) {
         mouseTimeout = setTimeout(() => {
             settingsPanel.classList.add('hidden');
         }, 2000);
     }
 }
 
-// Event listeners for settings
-speedInput.addEventListener('input', (e) => {
-    settings.cyclesPerMinute = parseFloat(e.target.value) || 40;
-});
+// Attach all settings event listeners (called after UI generation/reload)
+function attachSettingsEventListeners() {
+    // Refresh element references
+    speedInput = document.getElementById('speed');
+    ballSizeInput = document.getElementById('ballSize');
+    ballStyleSelect = document.getElementById('ballStyle');
+    glowEnabledInput = document.getElementById('glowEnabled');
+    trailStyleSelect = document.getElementById('trailStyle');
+    audioEnabledInput = document.getElementById('audioEnabled');
+    frequencyInput = document.getElementById('frequency');
 
-document.getElementById('motionType').addEventListener('change', (e) => {
-    settings.motionType = e.target.value;
-});
+    if (!speedInput) return; // Settings UI not yet loaded
 
-ballSizeInput.addEventListener('input', (e) => {
-    settings.ballSize = parseFloat(e.target.value) || 60;
-    document.getElementById('ballSizeValue').textContent = settings.ballSize;
-});
-
-// Initialize Pickr color pickers
-const ballColorPicker = Pickr.create({
-    el: '#ballColorPicker',
-    theme: 'nano',
-    default: settings.ballColor,
-    swatches: [
-        '#db4343', '#e74c3c', '#ff6b6b', '#f39c12', '#f1c40f',
-        '#2ecc71', '#1abc9c', '#3498db', '#9b59b6', '#ffffff'
-    ],
-    components: {
-        preview: true,
-        opacity: false,
-        hue: true,
-        interaction: {
-            hex: true,
-            input: true,
-            save: true
-        }
-    }
-});
-
-ballColorPicker.on('show', () => {
-    pickerOpen = true;
-    if (mouseTimeout) clearTimeout(mouseTimeout);
-});
-
-ballColorPicker.on('hide', () => {
-    pickerOpen = false;
-    showSettings();
-});
-
-ballColorPicker.on('change', (color) => {
-    const hex = color.toHEXA().toString();
-    settings.ballColor = hex;
-    document.getElementById('ballColorHex').value = hex;
-    ballColorPicker.applyColor();
-    localStorage.setItem('emdr_ballColor', hex);
-    updateFavicon(hex);
-});
-
-ballColorPicker.on('save', () => {
-    ballColorPicker.hide();
-});
-
-const bgColorPicker = Pickr.create({
-    el: '#bgColorPicker',
-    theme: 'nano',
-    default: settings.bgColor,
-    swatches: [
-        '#000000', '#1a1a2e', '#16213e', '#0f3460', '#2c3e50',
-        '#34495e', '#1e272e', '#2d3436', '#636e72', '#ffffff'
-    ],
-    components: {
-        preview: true,
-        opacity: false,
-        hue: true,
-        interaction: {
-            hex: true,
-            input: true,
-            save: true
-        }
-    }
-});
-
-bgColorPicker.on('show', () => {
-    pickerOpen = true;
-    if (mouseTimeout) clearTimeout(mouseTimeout);
-});
-
-bgColorPicker.on('hide', () => {
-    pickerOpen = false;
-    showSettings();
-});
-
-bgColorPicker.on('change', (color) => {
-    const hex = color.toHEXA().toString();
-    settings.bgColor = hex;
-    document.getElementById('bgColorHex').value = hex;
-    bgColorPicker.applyColor();
-});
-
-bgColorPicker.on('save', () => {
-    bgColorPicker.hide();
-});
-
-document.getElementById('ballColorHex').addEventListener('input', (e) => {
-    const hex = e.target.value;
-    if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
-        settings.ballColor = hex;
-        ballColorPicker.setColor(hex);
-        localStorage.setItem('emdr_ballColor', hex);
-        updateFavicon(hex);
-    }
-});
-
-ballStyleSelect.addEventListener('change', (e) => {
-    settings.ballStyle = e.target.value;
-});
-
-glowEnabledInput.addEventListener('change', (e) => {
-    settings.glowEnabled = e.target.checked;
-});
-
-trailStyleSelect.addEventListener('change', (e) => {
-    settings.trailStyle = e.target.value;
-    document.querySelectorAll('.trail-options').forEach(el => {
-        el.classList.toggle('hidden', e.target.value === 'none');
+    // Speed input
+    speedInput.addEventListener('input', (e) => {
+        settings.cyclesPerMinute = parseFloat(e.target.value) || 40;
     });
-    // Initialize Three.js when fluid is selected
-    if (e.target.value === 'fluid') {
-        initThreeJS();
-    }
-});
 
-document.getElementById('trailLength').addEventListener('input', (e) => {
-    settings.trailLength = parseInt(e.target.value) || 15;
-    document.getElementById('trailLengthValue').textContent = settings.trailLength;
-});
+    // Motion type
+    document.getElementById('motionType').addEventListener('change', (e) => {
+        settings.motionType = e.target.value;
+    });
 
-document.getElementById('trailOpacity').addEventListener('input', (e) => {
-    settings.trailOpacity = parseInt(e.target.value) || 15;
-    document.getElementById('trailOpacityValue').textContent = settings.trailOpacity;
-});
+    // Ball size
+    ballSizeInput.addEventListener('input', (e) => {
+        settings.ballSize = parseFloat(e.target.value) || 60;
+        document.getElementById('ballSizeValue').textContent = settings.ballSize;
+    });
 
-document.getElementById('bgColorHex').addEventListener('input', (e) => {
-    const hex = e.target.value;
-    if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
-        settings.bgColor = hex;
-        bgColorPicker.setColor(hex);
-    }
-});
+    // Initialize custom color wheel pickers
+    function initColorPicker(id, initialColor, onColorChange) {
+        const btn = document.getElementById(id + 'Btn');
+        const popup = document.getElementById(id + 'Popup');
+        const hexInput = document.getElementById(id + 'Hex');
+        const lightnessSlider = document.getElementById(id + 'Lightness');
 
-audioEnabledInput.addEventListener('change', (e) => {
-    settings.audioEnabled = e.target.checked;
-    audioBtn.textContent = settings.audioEnabled ? '🔊' : '🔇';
-    if (settings.audioEnabled) {
-        initAudio();
-        if (audioContext.state === 'suspended') {
-            audioContext.resume();
-        }
-        startAudioLoop();
-    } else {
-        stopAudioLoop();
-    }
-    updateAudio();
-});
+        if (!btn || !popup) return null;
 
-frequencyInput.addEventListener('input', (e) => {
-    settings.frequency = parseFloat(e.target.value) || 220;
-});
+        // Toggle popup on button click
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
 
-document.getElementById('toneVolume').addEventListener('input', (e) => {
-    settings.toneVolume = parseInt(e.target.value) || 30;
-    document.getElementById('toneVolumeValue').textContent = settings.toneVolume;
-});
+            // Close any other open popup
+            if (activeColorPopup && activeColorPopup !== popup) {
+                activeColorPopup.classList.add('hidden');
+            }
 
-document.getElementById('tonePan').addEventListener('input', (e) => {
-    settings.tonePanAmount = parseInt(e.target.value);
-    document.getElementById('tonePanValue').textContent = settings.tonePanAmount;
-});
+            const isOpening = popup.classList.contains('hidden');
+            popup.classList.toggle('hidden');
 
-// Ambient audio controls
-const ambientAudioSelect = document.getElementById('ambientAudio');
-const ambientVolumeInput = document.getElementById('ambientVolume');
-const ambientVolumeControl = document.querySelector('.ambient-volume-control');
+            if (isOpening) {
+                // Position popup next to the button
+                const btnRect = btn.getBoundingClientRect();
+                popup.style.left = (btnRect.right + 10) + 'px';
+                popup.style.top = btnRect.top + 'px';
 
-ambientAudioSelect.addEventListener('change', (e) => {
-    const src = e.target.value;
-
-    // Set frequency to 65Hz for Music From The Sun
-    if (src.includes('Music From The Sun')) {
-        settings.frequency = 65;
-        frequencyInput.value = 65;
-    }
-
-    // Stop and disconnect existing audio
-    if (ambientAudio) {
-        ambientAudio.pause();
-        ambientAudio = null;
-    }
-    if (ambientSource) {
-        ambientSource.disconnect();
-        ambientSource = null;
-    }
-    if (ambientPanner) {
-        ambientPanner.disconnect();
-        ambientPanner = null;
-    }
-    if (ambientGain) {
-        ambientGain.disconnect();
-        ambientGain = null;
-    }
-
-    if (src) {
-        // Initialize audio context if needed
-        if (!audioContext) {
-            audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        }
-        if (audioContext.state === 'suspended') {
-            audioContext.resume();
-        }
-
-        // Create new audio element
-        ambientAudio = new Audio(src);
-        ambientAudio.loop = true;
-
-        // Route through Web Audio API for panning
-        ambientSource = audioContext.createMediaElementSource(ambientAudio);
-        ambientPanner = audioContext.createStereoPanner();
-        ambientGain = audioContext.createGain();
-        ambientGain.gain.value = (ambientVolumeInput.value || 50) / 100;
-
-        ambientSource.connect(ambientPanner);
-        ambientPanner.connect(ambientGain);
-        ambientGain.connect(audioContext.destination);
-
-        ambientAudio.play().catch(err => {
-            console.log('Ambient audio autoplay blocked, will play on user interaction');
+                activeColorPopup = popup;
+                pickerIsOpen = true;
+                if (mouseTimeout) clearTimeout(mouseTimeout);
+            } else {
+                activeColorPopup = null;
+                pickerIsOpen = false;
+            }
         });
 
-        // Show volume control
-        ambientVolumeControl.classList.remove('hidden');
+        // Create color wheel
+        const wheel = new ColorWheel(id + 'Wheel', {
+            onChange: (hex) => {
+                btn.style.background = hex;
+                hexInput.value = hex;
+                onColorChange(hex);
+            }
+        });
 
-        // Start audio loop if not already running
-        startAudioLoop();
-    } else {
-        // Hide volume control
-        ambientVolumeControl.classList.add('hidden');
+        if (wheel.canvas) {
+            wheel.setColor(initialColor);
+            btn.style.background = initialColor;
+
+            // Lightness slider
+            const hsl = wheel.hexToHsl(initialColor);
+            if (hsl) {
+                lightnessSlider.value = hsl.l;
+            }
+
+            lightnessSlider.addEventListener('input', (e) => {
+                wheel.setLightness(parseFloat(e.target.value));
+            });
+
+            // Prevent clicks inside popup from closing it
+            popup.addEventListener('click', (e) => {
+                e.stopPropagation();
+            });
+        }
+
+        return wheel;
     }
-});
 
-ambientVolumeInput.addEventListener('input', (e) => {
-    const volume = parseInt(e.target.value) || 50;
-    document.getElementById('ambientVolumeValue').textContent = volume;
-    if (ambientGain) {
-        ambientGain.gain.value = volume / 100;
+    // Ball color picker
+    ballColorWheel = initColorPicker('ballColor', settings.ballColor, (hex) => {
+        settings.ballColor = hex;
+        localStorage.setItem('emdr_ballColor', hex);
+        updateFavicon(hex);
+    });
+
+    // Background color picker
+    bgColorWheel = initColorPicker('bgColor', settings.bgColor, (hex) => {
+        settings.bgColor = hex;
+    });
+
+    // Ball color hex input
+    document.getElementById('ballColorHex').addEventListener('input', (e) => {
+        const hex = e.target.value;
+        if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+            settings.ballColor = hex;
+            if (ballColorWheel) ballColorWheel.setColor(hex);
+            document.getElementById('ballColorBtn').style.background = hex;
+            localStorage.setItem('emdr_ballColor', hex);
+            updateFavicon(hex);
+        }
+    });
+
+    // Background color hex input
+    document.getElementById('bgColorHex').addEventListener('input', (e) => {
+        const hex = e.target.value;
+        if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
+            settings.bgColor = hex;
+            if (bgColorWheel) bgColorWheel.setColor(hex);
+            document.getElementById('bgColorBtn').style.background = hex;
+        }
+    });
+
+    // Ball style
+    ballStyleSelect.addEventListener('change', (e) => {
+        settings.ballStyle = e.target.value;
+    });
+
+    // Glow
+    glowEnabledInput.addEventListener('change', (e) => {
+        settings.glowEnabled = e.target.checked;
+    });
+
+    // Trail style
+    trailStyleSelect.addEventListener('change', (e) => {
+        settings.trailStyle = e.target.value;
+        // Show trail options for non-ripple trail effects
+        document.querySelectorAll('.trail-options').forEach(el => {
+            el.classList.toggle('hidden', e.target.value === 'none' || e.target.value === 'ripple');
+        });
+        // Show ripple options only for ripple effect
+        document.querySelectorAll('.ripple-options').forEach(el => {
+            el.classList.toggle('hidden', e.target.value !== 'ripple');
+        });
+        // Initialize Three.js when fluid is selected
+        if (e.target.value === 'fluid') {
+            initThreeJS();
+        }
+        // Initialize wave equation when ripple is selected
+        if (e.target.value === 'ripple') {
+            initWaveEquation();
+        }
+    });
+
+    // Trail length
+    document.getElementById('trailLength').addEventListener('input', (e) => {
+        settings.trailLength = parseInt(e.target.value) || 15;
+        document.getElementById('trailLengthValue').textContent = settings.trailLength;
+    });
+
+    // Trail opacity
+    document.getElementById('trailOpacity').addEventListener('input', (e) => {
+        settings.trailOpacity = parseInt(e.target.value) || 15;
+        document.getElementById('trailOpacityValue').textContent = settings.trailOpacity;
+    });
+
+    // Wave equation parameter controls
+    document.getElementById('waveSpeed').addEventListener('input', (e) => {
+        settings.waveSpeed = parseFloat(e.target.value);
+        document.getElementById('waveSpeedValue').textContent = settings.waveSpeed.toFixed(2);
+        if (waveSimMaterial) {
+            waveSimMaterial.uniforms.uWaveSpeed.value = settings.waveSpeed;
+        }
+    });
+
+    document.getElementById('waveDamping').addEventListener('input', (e) => {
+        settings.waveDamping = parseFloat(e.target.value);
+        document.getElementById('waveDampingValue').textContent = settings.waveDamping.toFixed(3);
+        if (waveSimMaterial) {
+            waveSimMaterial.uniforms.uDamping.value = settings.waveDamping;
+        }
+    });
+
+    document.getElementById('waveForce').addEventListener('input', (e) => {
+        settings.waveForce = parseFloat(e.target.value);
+        document.getElementById('waveForceValue').textContent = settings.waveForce.toFixed(2);
+    });
+
+    document.getElementById('simSteps').addEventListener('input', (e) => {
+        settings.simSteps = parseInt(e.target.value);
+        document.getElementById('simStepsValue').textContent = settings.simSteps;
+    });
+
+    document.getElementById('edgeReflect').addEventListener('input', (e) => {
+        settings.edgeReflect = parseInt(e.target.value) / 100;
+        document.getElementById('edgeReflectValue').textContent = e.target.value;
+        if (waveSimMaterial) {
+            waveSimMaterial.uniforms.uEdgeReflect.value = settings.edgeReflect;
+        }
+    });
+
+    document.getElementById('edgeBoundary').addEventListener('input', (e) => {
+        settings.edgeBoundary = parseFloat(e.target.value);
+        document.getElementById('edgeBoundaryValue').textContent = settings.edgeBoundary.toFixed(1);
+        if (waveSimMaterial) {
+            waveSimMaterial.uniforms.uEdgeBoundary.value = settings.edgeBoundary / 100;
+        }
+    });
+
+    document.getElementById('waveSourceSize').addEventListener('input', (e) => {
+        settings.waveSourceSize = parseFloat(e.target.value);
+        document.getElementById('waveSourceSizeValue').textContent = settings.waveSourceSize.toFixed(1);
+    });
+
+    document.getElementById('waveGridSize').addEventListener('change', (e) => {
+        settings.waveGridSize = parseInt(e.target.value);
+        resizeWaveGrid();
+    });
+
+    // Audio enabled checkbox (controls panning tone only, not the audio loop)
+    audioEnabledInput.addEventListener('change', (e) => {
+        settings.audioEnabled = e.target.checked;
+        audioBtn.textContent = settings.audioEnabled ? '🔊' : '🔇';
+        if (settings.audioEnabled) {
+            initAudio();
+            if (audioContext && audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+            startAudioLoop();
+        }
+        // Don't stop audio loop here - it's needed for music panning too
+        updateAudio();
+    });
+
+    // Frequency input
+    frequencyInput.addEventListener('input', (e) => {
+        settings.frequency = Math.max(20, parseFloat(e.target.value) || 110);
+    });
+
+    // Tone volume
+    document.getElementById('toneVolume').addEventListener('input', (e) => {
+        settings.toneVolume = parseInt(e.target.value) || 30;
+        document.getElementById('toneVolumeValue').textContent = settings.toneVolume;
+    });
+
+    // Tone pan
+    document.getElementById('tonePan').addEventListener('input', (e) => {
+        settings.tonePanAmount = parseInt(e.target.value);
+        document.getElementById('tonePanValue').textContent = settings.tonePanAmount;
+    });
+
+    // Music audio controls
+    const musicSelectEl = document.getElementById('musicSelect');
+    const musicVolumeInput = document.getElementById('musicVolume');
+    const musicVolumeControls = document.querySelectorAll('.music-volume-control');
+
+    musicSelectEl.addEventListener('change', (e) => {
+        const src = e.target.value;
+
+        // Set frequency to 65Hz for Music From The Sun
+        if (src.includes('Music From The Sun')) {
+            settings.frequency = 65;
+            frequencyInput.value = 65;
+        }
+
+        // Stop and disconnect existing audio
+        if (musicAudio) {
+            musicAudio.pause();
+            musicAudio = null;
+        }
+        if (musicSource) {
+            musicSource.disconnect();
+            musicSource = null;
+        }
+        if (musicPanner) {
+            musicPanner.disconnect();
+            musicPanner = null;
+        }
+        if (musicGain) {
+            musicGain.disconnect();
+            musicGain = null;
+        }
+
+        if (src) {
+            // Initialize audio context and reverb chain
+            initAudioContext();
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            // Create new audio element
+            musicAudio = new Audio(src);
+            musicAudio.loop = true;
+
+            // Route through Web Audio API for panning
+            musicSource = audioContext.createMediaElementSource(musicAudio);
+            musicPanner = audioContext.createStereoPanner();
+            musicGain = audioContext.createGain();
+            musicGain.gain.value = settings.musicVolume / 100;
+
+            musicSource.connect(musicPanner);
+            musicPanner.connect(musicGain);
+            // Route through master for reverb processing
+            musicGain.connect(masterGain);
+
+            musicAudio.play().catch(err => {
+                console.log('Music audio autoplay blocked, will play on user interaction');
+            });
+
+            // Show volume/pan controls
+            musicVolumeControls.forEach(el => el.classList.remove('hidden'));
+
+            // Start audio loop if not already running
+            startAudioLoop();
+        } else {
+            // Hide volume/pan controls
+            musicVolumeControls.forEach(el => el.classList.add('hidden'));
+        }
+    });
+
+    // Music volume
+    musicVolumeInput.addEventListener('input', (e) => {
+        const volume = parseInt(e.target.value);
+        settings.musicVolume = volume;
+        document.getElementById('musicVolumeValue').textContent = volume;
+        if (musicGain) {
+            musicGain.gain.value = volume / 100;
+        }
+    });
+
+    // Music pan
+    document.getElementById('musicPan').addEventListener('input', (e) => {
+        settings.musicPanAmount = parseInt(e.target.value);
+        document.getElementById('musicPanValue').textContent = settings.musicPanAmount;
+    });
+
+    // Reverb controls
+    document.getElementById('reverbEnabled').addEventListener('change', (e) => {
+        settings.reverbEnabled = e.target.checked;
+        document.querySelectorAll('.reverb-options').forEach(el => {
+            el.classList.toggle('hidden', !settings.reverbEnabled);
+        });
+
+        if (settings.reverbEnabled) {
+            // Initialize audio context if needed
+            initAudioContext();
+            updateReverbMix();
+        } else {
+            // Disable reverb (full dry)
+            if (reverbDryGain && reverbWetGain) {
+                reverbDryGain.gain.setTargetAtTime(1, audioContext.currentTime, 0.05);
+                reverbWetGain.gain.setTargetAtTime(0, audioContext.currentTime, 0.05);
+            }
+        }
+    });
+
+    document.getElementById('reverbType').addEventListener('change', (e) => {
+        settings.reverbType = e.target.value;
+        updateReverbImpulse();
+    });
+
+    document.getElementById('reverbMix').addEventListener('input', (e) => {
+        settings.reverbMix = parseInt(e.target.value);
+        document.getElementById('reverbMixValue').textContent = settings.reverbMix;
+        if (settings.reverbEnabled) {
+            updateReverbMix();
+        }
+    });
+
+    document.getElementById('reverbDecay').addEventListener('input', (e) => {
+        settings.reverbDecay = parseFloat(e.target.value);
+        document.getElementById('reverbDecayValue').textContent = settings.reverbDecay.toFixed(1);
+        updateReverbImpulse();
+    });
+
+    // Keep settings visible while any input/select is focused
+    settingsPanel.querySelectorAll('input, select').forEach(el => {
+        el.addEventListener('focus', () => {
+            inputFocused = true;
+            if (mouseTimeout) clearTimeout(mouseTimeout);
+        });
+        el.addEventListener('blur', () => {
+            inputFocused = false;
+            showSettings();
+        });
+        // Blur after change so spacebar still works for play/pause
+        el.addEventListener('change', () => {
+            el.blur();
+        });
+    });
+
+    // Copy button handlers
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const targetId = e.target.dataset.target;
+            const input = document.getElementById(targetId);
+            navigator.clipboard.writeText(input.value).then(() => {
+                const originalText = e.target.textContent;
+                e.target.textContent = 'Copied!';
+                setTimeout(() => {
+                    e.target.textContent = originalText;
+                }, 1000);
+            });
+        });
+    });
+
+    // Sync ALL UI elements with current settings values (from localStorage)
+    speedInput.value = settings.cyclesPerMinute;
+    document.getElementById('motionType').value = settings.motionType;
+    ballSizeInput.value = settings.ballSize;
+    document.getElementById('ballSizeValue').textContent = settings.ballSize;
+    document.getElementById('ballColorHex').value = settings.ballColor;
+    document.getElementById('bgColorHex').value = settings.bgColor;
+    ballStyleSelect.value = settings.ballStyle;
+    glowEnabledInput.checked = settings.glowEnabled;
+    trailStyleSelect.value = settings.trailStyle;
+
+    // Trail options
+    document.getElementById('trailLength').value = settings.trailLength;
+    document.getElementById('trailLengthValue').textContent = settings.trailLength;
+    document.getElementById('trailOpacity').value = settings.trailOpacity;
+    document.getElementById('trailOpacityValue').textContent = settings.trailOpacity;
+
+    // Wave/ripple options
+    document.getElementById('waveSpeed').value = settings.waveSpeed;
+    document.getElementById('waveSpeedValue').textContent = settings.waveSpeed.toFixed(2);
+    document.getElementById('waveDamping').value = settings.waveDamping;
+    document.getElementById('waveDampingValue').textContent = settings.waveDamping.toFixed(3);
+    document.getElementById('waveForce').value = settings.waveForce;
+    document.getElementById('waveForceValue').textContent = settings.waveForce.toFixed(2);
+    document.getElementById('simSteps').value = settings.simSteps;
+    document.getElementById('simStepsValue').textContent = settings.simSteps;
+    document.getElementById('edgeReflect').value = settings.edgeReflect * 100;
+    document.getElementById('edgeReflectValue').textContent = Math.round(settings.edgeReflect * 100);
+    document.getElementById('edgeBoundary').value = settings.edgeBoundary;
+    document.getElementById('edgeBoundaryValue').textContent = settings.edgeBoundary.toFixed(1);
+    document.getElementById('waveSourceSize').value = settings.waveSourceSize;
+    document.getElementById('waveSourceSizeValue').textContent = settings.waveSourceSize.toFixed(1);
+    document.getElementById('waveGridSize').value = settings.waveGridSize;
+
+    // Audio options
+    audioEnabledInput.checked = settings.audioEnabled;
+    frequencyInput.value = settings.frequency;
+    document.getElementById('toneVolume').value = settings.toneVolume;
+    document.getElementById('toneVolumeValue').textContent = settings.toneVolume;
+    document.getElementById('tonePan').value = settings.tonePanAmount;
+    document.getElementById('tonePanValue').textContent = settings.tonePanAmount;
+    document.getElementById('musicPan').value = settings.musicPanAmount;
+    document.getElementById('musicPanValue').textContent = settings.musicPanAmount;
+    document.getElementById('musicVolume').value = settings.musicVolume || 50;
+    document.getElementById('musicVolumeValue').textContent = settings.musicVolume || 50;
+
+    // Reverb options
+    document.getElementById('reverbEnabled').checked = settings.reverbEnabled;
+    document.getElementById('reverbType').value = settings.reverbType;
+    document.getElementById('reverbMix').value = settings.reverbMix;
+    document.getElementById('reverbMixValue').textContent = settings.reverbMix;
+    document.getElementById('reverbDecay').value = settings.reverbDecay;
+    document.getElementById('reverbDecayValue').textContent = settings.reverbDecay.toFixed(1);
+
+    // Show/hide conditional option groups based on current settings
+    document.querySelectorAll('.trail-options').forEach(el => {
+        el.classList.toggle('hidden', settings.trailStyle === 'none' || settings.trailStyle === 'ripple');
+    });
+    document.querySelectorAll('.ripple-options').forEach(el => {
+        el.classList.toggle('hidden', settings.trailStyle !== 'ripple');
+    });
+    document.querySelectorAll('.reverb-options').forEach(el => {
+        el.classList.toggle('hidden', !settings.reverbEnabled);
+    });
+
+    // Initialize effects based on saved trail style
+    if (settings.trailStyle === 'fluid') {
+        initThreeJS();
     }
-});
+    if (settings.trailStyle === 'ripple') {
+        initWaveEquation();
+    }
 
-document.getElementById('ambientPan').addEventListener('input', (e) => {
-    settings.ambientPanAmount = parseInt(e.target.value);
-    document.getElementById('ambientPanValue').textContent = settings.ambientPanAmount;
-});
+    // Apply wave settings to shader after initialization
+    if (waveSimMaterial) {
+        waveSimMaterial.uniforms.uWaveSpeed.value = settings.waveSpeed;
+        waveSimMaterial.uniforms.uDamping.value = settings.waveDamping;
+        waveSimMaterial.uniforms.uEdgeReflect.value = settings.edgeReflect;
+        waveSimMaterial.uniforms.uEdgeBoundary.value = settings.edgeBoundary / 100;
+    }
 
-// Keep settings visible while any input/select is focused
-settingsPanel.querySelectorAll('input, select').forEach(el => {
-    el.addEventListener('focus', () => {
-        inputFocused = true;
-        if (mouseTimeout) clearTimeout(mouseTimeout);
-    });
-    el.addEventListener('blur', () => {
-        inputFocused = false;
-        showSettings();
-    });
-});
+    // Update audio button icon
+    audioBtn.textContent = settings.audioEnabled ? '🔊' : '🔇';
+
+    updateFavicon(settings.ballColor);
+}
+
+// Expose globally for settings-ui.js to call after UI reload
+window.attachSettingsEventListeners = attachSettingsEventListeners;
 
 // Mouse movement shows settings
 document.addEventListener('mousemove', showSettings);
 
 // Click outside settings toggles visibility
 document.addEventListener('click', (e) => {
-    // Don't hide if clicking inside a Pickr popup or picker is open
-    if (pickerOpen || e.target.closest('.pcr-app')) return;
+    const insideSettings = settingsPanel.contains(e.target);
+    const insideColorPopup = e.target.closest('.color-popup');
 
-    if (!settingsPanel.contains(e.target) && e.target !== playPauseBtn && e.target !== audioBtn) {
-        if (settingsPanel.classList.contains('hidden')) {
-            showSettings();
-        } else {
-            settingsPanel.classList.add('hidden');
-            if (mouseTimeout) clearTimeout(mouseTimeout);
-        }
+    // Close any open color popup if clicking outside of it
+    if (activeColorPopup && !insideColorPopup && !e.target.closest('.color-swatch-btn')) {
+        activeColorPopup.classList.add('hidden');
+        activeColorPopup = null;
+        pickerIsOpen = false;
+    }
+
+    // Don't toggle settings if clicking inside settings or on control buttons
+    if (insideSettings || e.target === playPauseBtn || e.target === audioBtn) {
+        return;
+    }
+
+    // Toggle settings panel visibility
+    if (settingsPanel.classList.contains('hidden')) {
+        showSettings();
+    } else {
+        settingsPanel.classList.add('hidden');
+        if (mouseTimeout) clearTimeout(mouseTimeout);
     }
 });
 
@@ -938,21 +1852,6 @@ window.addEventListener('orientationchange', () => {
 if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', resizeCanvas);
 }
-
-// Copy button handlers
-document.querySelectorAll('.copy-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-        const targetId = e.target.dataset.target;
-        const input = document.getElementById(targetId);
-        navigator.clipboard.writeText(input.value).then(() => {
-            const originalText = e.target.textContent;
-            e.target.textContent = 'Copied!';
-            setTimeout(() => {
-                e.target.textContent = originalText;
-            }, 1000);
-        });
-    });
-});
 
 // Play/pause button click/touch
 playPauseBtn.addEventListener('click', togglePlayPause);
@@ -970,7 +1869,6 @@ document.addEventListener('keydown', (e) => {
 });
 
 // Audio button
-const audioBtn = document.getElementById('audioBtn');
 function toggleAudio() {
     settings.audioEnabled = !settings.audioEnabled;
     audioEnabledInput.checked = settings.audioEnabled;
@@ -978,12 +1876,25 @@ function toggleAudio() {
 
     if (settings.audioEnabled) {
         initAudio();
-        if (audioContext.state === 'suspended') {
+        if (audioContext && audioContext.state === 'suspended') {
             audioContext.resume();
         }
         startAudioLoop();
+        // Resume music if it was playing
+        if (musicAudio && musicAudio.paused && musicGain && audioContext) {
+            musicGain.gain.setTargetAtTime(settings.musicVolume / 100, audioContext.currentTime, 0.3);
+            musicAudio.play();
+        }
     } else {
-        stopAudioLoop();
+        // Fade out and pause music
+        if (audioContext && musicAudio && musicGain && !musicAudio.paused) {
+            musicGain.gain.setTargetAtTime(0, audioContext.currentTime, 0.3);
+            setTimeout(() => {
+                if (!settings.audioEnabled && musicAudio) {
+                    musicAudio.pause();
+                }
+            }, 400);
+        }
     }
     updateAudio();
 }
@@ -995,19 +1906,5 @@ audioBtn.addEventListener('touchend', (e) => {
 
 // Initialize
 resizeCanvas();
-
-// Sync ball size UI with settings (for mobile default)
-ballSizeInput.value = settings.ballSize;
-document.getElementById('ballSizeValue').textContent = settings.ballSize;
-
-// Sync ball color UI with settings (for saved color)
-document.getElementById('ballColorHex').value = settings.ballColor;
-updateFavicon(settings.ballColor);
-
-// Debug: track visibility changes
-document.addEventListener('visibilitychange', () => {
-    console.log('Visibility changed:', document.hidden ? 'HIDDEN' : 'VISIBLE');
-    console.log('isPlaying:', isPlaying, 'speedMultiplier:', speedMultiplier);
-});
 
 requestAnimationFrame(animate);

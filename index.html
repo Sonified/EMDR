@@ -7,7 +7,6 @@
     <meta name="mobile-web-app-capable" content="yes">
     <title>EMDR Tool</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔵</text></svg>">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/themes/nano.min.css">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -21,131 +20,10 @@
     <button id="audioBtn" class="audio-btn">🔊</button>
     <button id="playPauseBtn" class="play-pause-btn">▶</button>
 
-    <div id="settings" class="settings hidden">
-        <h2>Settings</h2>
-
-        <div class="setting-group">
-            <label for="speed">Speed (cycles/min)</label>
-            <input type="number" id="speed" min="1" max="120" value="40">
-        </div>
-
-        <div class="setting-group">
-            <label for="motionType">Motion</label>
-            <select id="motionType">
-                <option value="sine">Sine (ease at edges)</option>
-                <option value="linear">Linear (constant speed)</option>
-            </select>
-        </div>
-
-        <div class="setting-group">
-            <label for="ballSize">Ball Size: <span id="ballSizeValue">60</span></label>
-            <input type="range" id="ballSize" min="10" max="100" value="60">
-        </div>
-
-        <div class="setting-group">
-            <label>Ball Color</label>
-            <div class="color-row">
-                <div id="ballColorPicker"></div>
-                <input type="text" id="ballColorHex" value="#db4343" class="hex-input">
-                <button type="button" class="copy-btn" data-target="ballColorHex">Copy</button>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <label>Background Color</label>
-            <div class="color-row">
-                <div id="bgColorPicker"></div>
-                <input type="text" id="bgColorHex" value="#000000" class="hex-input">
-                <button type="button" class="copy-btn" data-target="bgColorHex">Copy</button>
-            </div>
-        </div>
-
-        <div class="setting-group">
-            <label for="ballStyle">Ball Style</label>
-            <select id="ballStyle">
-                <option value="flat">Flat</option>
-                <option value="sphere" selected>Sphere (3D)</option>
-            </select>
-        </div>
-
-        <div class="setting-group">
-            <label for="glowEnabled">
-                <input type="checkbox" id="glowEnabled">
-                Glow Effect
-            </label>
-        </div>
-
-        <div class="setting-group">
-            <label for="trailStyle">Trail Effect</label>
-            <select id="trailStyle">
-                <option value="none">None</option>
-                <option value="basic">Basic</option>
-                <option value="3d">3D Depth</option>
-                <option value="fluid">Fluid</option>
-            </select>
-        </div>
-
-        <div class="setting-group trail-options hidden">
-            <label for="trailLength">Trail Length: <span id="trailLengthValue">15</span></label>
-            <input type="range" id="trailLength" min="5" max="50" value="15">
-        </div>
-
-        <div class="setting-group trail-options hidden">
-            <label for="trailOpacity">Trail Opacity: <span id="trailOpacityValue">15</span>%</label>
-            <input type="range" id="trailOpacity" min="10" max="100" value="15">
-        </div>
-
-        <div class="setting-group">
-            <label for="ambientAudio">Ambient Audio</label>
-            <select id="ambientAudio">
-                <option value="">None</option>
-                <option value="audio_files/18 Music From The Sun.mp3">Music From The Sun</option>
-                <option value="audio_files/18. Synthesized Ocean (Loop).mp3">Synthesized Ocean</option>
-                <option value="audio_files/Birth of the Evening Star.mp3">Birth of the Evening Star</option>
-                <option value="audio_files/Endless Now (v1.0).mp3">Endless Now</option>
-                <option value="audio_files/Life in a Moment.mp3">Life in a Moment</option>
-                <option value="audio_files/MiND Electric Cello Improv.mp3">Electric Cello Improv</option>
-                <option value="audio_files/Re_Entry_Music_1.0.mp3">Re-Entry Music</option>
-                <option value="audio_files/Shepard's Rise.mp3">Shepard's Rise</option>
-                <option value="audio_files/Shepards_Rise_Interlochen.mp3">Shepard's Rise (Interlochen)</option>
-            </select>
-        </div>
-
-        <div class="setting-group ambient-volume-control hidden">
-            <label for="ambientVolume">Ambient Volume: <span id="ambientVolumeValue">50</span>%</label>
-            <input type="range" id="ambientVolume" min="0" max="100" value="50">
-        </div>
-
-        <div class="setting-group ambient-volume-control hidden">
-            <label for="ambientPan">Ambient Pan: <span id="ambientPanValue">100</span>%</label>
-            <input type="range" id="ambientPan" min="0" max="100" value="100">
-        </div>
-
-        <div class="setting-group">
-            <label for="audioEnabled">
-                <input type="checkbox" id="audioEnabled" checked>
-                Enable Panning Tone
-            </label>
-        </div>
-
-        <div class="setting-group tone-options">
-            <label for="frequency">Frequency (Hz)</label>
-            <input type="number" id="frequency" min="20" max="2000" value="110">
-        </div>
-
-        <div class="setting-group tone-options">
-            <label for="toneVolume">Tone Volume: <span id="toneVolumeValue">30</span>%</label>
-            <input type="range" id="toneVolume" min="0" max="100" value="30">
-        </div>
-
-        <div class="setting-group tone-options">
-            <label for="tonePan">Tone Pan: <span id="tonePanValue">100</span>%</label>
-            <input type="range" id="tonePan" min="0" max="100" value="100">
-        </div>
-    </div>
+    <div id="settings" class="settings hidden"></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@simonwep/pickr/dist/pickr.min.js"></script>
+    <script src="settings-ui.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
