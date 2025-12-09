@@ -943,30 +943,34 @@ function startMusicPlayback() {
     console.log('startMusicPlayback SUCCESS', { musicIsPlaying, playbackRate: musicSource.playbackRate.value });
 }
 
-// Stop music playback and save position
+// Stop music playback (position already tracked in updateMusicPlaybackRate)
 function stopMusicPlayback() {
-    console.log('stopMusicPlayback called', { musicSource: !!musicSource, musicIsPlaying });
+    console.log('stopMusicPlayback called', { musicSource: !!musicSource, musicIsPlaying, musicPausedAt });
     if (!musicSource || !musicIsPlaying) {
-        console.log('stopMusicPlayback EARLY RETURN');
         return;
     }
-
-    // Calculate current position accounting for playback rate changes
-    const elapsed = audioContext.currentTime - musicStartTime;
-    const oldPos = musicPausedAt;
-    musicPausedAt = (musicPausedAt + elapsed * (musicSource.playbackRate.value || 1)) % musicBuffer.duration;
-    console.log('stopMusicPlayback POSITION', { oldPos, elapsed, rate: musicSource.playbackRate.value, newPos: musicPausedAt });
 
     musicSource.stop();
     musicSource.disconnect();
     musicSource = null;
     musicIsPlaying = false;
+    lastMusicUpdateTime = 0; // Reset for next play
+    console.log('stopMusicPlayback DONE at position', musicPausedAt);
 }
 
-// Update music playback rate (true sample-rate change = pitch shifts with speed)
+// Update music playback rate and track position (true sample-rate change = pitch shifts with speed)
+let lastMusicUpdateTime = 0;
 function updateMusicPlaybackRate(rate) {
-    if (musicSource && musicIsPlaying) {
-        musicSource.playbackRate.value = Math.max(0.01, rate); // Min 0.01 to avoid artifacts
+    if (musicSource && musicIsPlaying && musicBuffer) {
+        const now = audioContext.currentTime;
+        const deltaTime = lastMusicUpdateTime ? (now - lastMusicUpdateTime) : 0;
+        lastMusicUpdateTime = now;
+
+        // Track position continuously based on actual playback rate
+        musicPausedAt = (musicPausedAt + deltaTime * musicSource.playbackRate.value) % musicBuffer.duration;
+
+        // Update rate for next frame
+        musicSource.playbackRate.value = Math.max(0.01, rate);
     }
 }
 
