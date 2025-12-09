@@ -280,9 +280,26 @@ function updateAudio() {
 
 // Audio loop runs independently of animation frame
 let audioInterval = null;
+let lastAudioTimestamp = null;
+
 function startAudioLoop() {
     if (audioInterval) return;
-    audioInterval = setInterval(updateAudio, 16); // ~60fps
+    lastAudioTimestamp = performance.now();
+    audioInterval = setInterval(() => {
+        const now = performance.now();
+        // Only advance virtualTime if animation loop is throttled (tab in background)
+        // Animation loop updates lastTimestamp, so if it's stale (>50ms), we're throttled
+        const animationThrottled = lastTimestamp !== null && (now - lastTimestamp) > 50;
+
+        if (animationThrottled && (isPlaying || speedMultiplier > 0)) {
+            const deltaTime = Math.min(now - lastAudioTimestamp, 100);
+            if (!isDecelerating && !waitingForEdge && speedMultiplier > 0) {
+                virtualTime += deltaTime * speedMultiplier;
+            }
+        }
+        lastAudioTimestamp = now;
+        updateAudio();
+    }, 16); // ~60fps
 }
 
 function stopAudioLoop() {
