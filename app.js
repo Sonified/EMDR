@@ -148,12 +148,15 @@ const frequencyInput = document.getElementById('frequency');
 // Detect mobile
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
 
+// Load saved ball color from localStorage
+const savedBallColor = localStorage.getItem('emdr_ballColor') || '#db4343';
+
 // State
 let settings = {
     cyclesPerMinute: 40,
     motionType: 'sine',
     ballSize: isMobile ? 30 : 60,
-    ballColor: '#db4343',
+    ballColor: savedBallColor,
     ballStyle: 'sphere',
     glowEnabled: false,
     trailStyle: 'none',
@@ -634,6 +637,7 @@ ballColorPicker.on('change', (color) => {
     settings.ballColor = hex;
     document.getElementById('ballColorHex').value = hex;
     ballColorPicker.applyColor();
+    localStorage.setItem('emdr_ballColor', hex);
 });
 
 ballColorPicker.on('save', () => {
@@ -686,6 +690,7 @@ document.getElementById('ballColorHex').addEventListener('input', (e) => {
     if (/^#[0-9A-Fa-f]{6}$/.test(hex)) {
         settings.ballColor = hex;
         ballColorPicker.setColor(hex);
+        localStorage.setItem('emdr_ballColor', hex);
     }
 });
 
@@ -835,5 +840,8 @@ resizeCanvas();
 // Sync ball size UI with settings (for mobile default)
 ballSizeInput.value = settings.ballSize;
 document.getElementById('ballSizeValue').textContent = settings.ballSize;
+
+// Sync ball color UI with settings (for saved color)
+document.getElementById('ballColorHex').value = settings.ballColor;
 
 requestAnimationFrame(animate);
