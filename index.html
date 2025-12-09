@@ -96,15 +96,40 @@
         </div>
 
         <div class="setting-group">
-            <label for="audioEnabled">
-                <input type="checkbox" id="audioEnabled" checked>
-                Enable Audio
-            </label>
+            <label for="ambientAudio">Ambient Audio</label>
+            <select id="ambientAudio">
+                <option value="">None</option>
+                <option value="audio_files/18 Music From The Sun.mp3">Music From The Sun</option>
+                <option value="audio_files/18. Synthesized Ocean (Loop).mp3">Synthesized Ocean</option>
+                <option value="audio_files/Birth of the Evening Star.mp3">Birth of the Evening Star</option>
+                <option value="audio_files/Endless Now (v1.0).mp3">Endless Now</option>
+                <option value="audio_files/MiND Electric Cello Improv.mp3">Electric Cello Improv</option>
+                <option value="audio_files/Re_Entry_Music_1.0.mp3">Re-Entry Music</option>
+                <option value="audio_files/Shepard's Rise.mp3">Shepard's Rise</option>
+                <option value="audio_files/Shepards_Rise_Interlochen.mp3">Shepard's Rise (Interlochen)</option>
+            </select>
+        </div>
+
+        <div class="setting-group ambient-volume-control hidden">
+            <label for="ambientVolume">Ambient Volume: <span id="ambientVolumeValue">50</span>%</label>
+            <input type="range" id="ambientVolume" min="0" max="100" value="50">
         </div>
 
         <div class="setting-group">
+            <label for="audioEnabled">
+                <input type="checkbox" id="audioEnabled" checked>
+                Enable Panning Tone
+            </label>
+        </div>
+
+        <div class="setting-group tone-options">
             <label for="frequency">Frequency (Hz)</label>
             <input type="number" id="frequency" min="20" max="2000" value="110">
+        </div>
+
+        <div class="setting-group tone-options">
+            <label for="toneVolume">Tone Volume: <span id="toneVolumeValue">30</span>%</label>
+            <input type="range" id="toneVolume" min="0" max="100" value="30">
         </div>
     </div>
 

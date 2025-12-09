@@ -176,7 +176,8 @@ let settings = {
     trailOpacity: 15,
     bgColor: '#000000',
     audioEnabled: true,
-    frequency: 110
+    frequency: 110,
+    toneVolume: 30
 };
 
 // Trail history for motion trail effect
@@ -207,6 +208,12 @@ let audioContext = null;
 let oscillator = null;
 let panner = null;
 let gainNode = null;
+
+// Ambient audio with panning
+let ambientAudio = null;
+let ambientSource = null;
+let ambientPanner = null;
+let ambientGain = null;
 
 // Resize canvas to fill window
 function resizeCanvas() {
@@ -277,11 +284,38 @@ function updateAudio() {
         }
 
         // Volume scales with speed multiplier for smooth fade
-        gainNode.gain.setTargetAtTime(0.3 * speedMultiplier, audioContext.currentTime, 0.1);
+        const toneVol = (settings.toneVolume / 100) * speedMultiplier;
+        gainNode.gain.setTargetAtTime(toneVol, audioContext.currentTime, 0.1);
         panner.pan.setTargetAtTime(audioPosition, audioContext.currentTime, 0.02);
         oscillator.frequency.setTargetAtTime(settings.frequency, audioContext.currentTime, 0.1);
+
+        // Also pan ambient audio if connected
+        if (ambientPanner) {
+            ambientPanner.pan.setTargetAtTime(audioPosition, audioContext.currentTime, 0.02);
+        }
     } else {
         gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+    }
+
+    // Pan ambient audio even when oscillator is disabled (as long as playing)
+    if (ambientPanner && speedMultiplier > 0) {
+        const cyclesPerSecond = settings.cyclesPerMinute / 60;
+        const period = 1000 / cyclesPerSecond;
+        let audioPosition;
+        if (settings.motionType === 'sine') {
+            const phase = (virtualTime / period) * Math.PI * 2;
+            audioPosition = Math.sin(phase);
+        } else {
+            const cycleProgress = ((virtualTime % period) + period) % period / period;
+            if (cycleProgress < 0.25) {
+                audioPosition = cycleProgress * 4;
+            } else if (cycleProgress < 0.75) {
+                audioPosition = 1 - ((cycleProgress - 0.25) * 4);
+            } else {
+                audioPosition = -1 + ((cycleProgress - 0.75) * 4);
+            }
+        }
+        ambientPanner.pan.setTargetAtTime(audioPosition, audioContext.currentTime, 0.02);
     }
 }
 
@@ -783,6 +817,83 @@ audioEnabledInput.addEventListener('change', (e) => {
 
 frequencyInput.addEventListener('input', (e) => {
     settings.frequency = parseFloat(e.target.value) || 220;
+});
+
+document.getElementById('toneVolume').addEventListener('input', (e) => {
+    settings.toneVolume = parseInt(e.target.value) || 30;
+    document.getElementById('toneVolumeValue').textContent = settings.toneVolume;
+});
+
+// Ambient audio controls
+const ambientAudioSelect = document.getElementById('ambientAudio');
+const ambientVolumeInput = document.getElementById('ambientVolume');
+const ambientVolumeControl = document.querySelector('.ambient-volume-control');
+
+ambientAudioSelect.addEventListener('change', (e) => {
+    const src = e.target.value;
+
+    // Stop and disconnect existing audio
+    if (ambientAudio) {
+        ambientAudio.pause();
+        ambientAudio = null;
+    }
+    if (ambientSource) {
+        ambientSource.disconnect();
+        ambientSource = null;
+    }
+    if (ambientPanner) {
+        ambientPanner.disconnect();
+        ambientPanner = null;
+    }
+    if (ambientGain) {
+        ambientGain.disconnect();
+        ambientGain = null;
+    }
+
+    if (src) {
+        // Initialize audio context if needed
+        if (!audioContext) {
+            audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioContext.state === 'suspended') {
+            audioContext.resume();
+        }
+
+        // Create new audio element
+        ambientAudio = new Audio(src);
+        ambientAudio.loop = true;
+
+        // Route through Web Audio API for panning
+        ambientSource = audioContext.createMediaElementSource(ambientAudio);
+        ambientPanner = audioContext.createStereoPanner();
+        ambientGain = audioContext.createGain();
+        ambientGain.gain.value = (ambientVolumeInput.value || 50) / 100;
+
+        ambientSource.connect(ambientPanner);
+        ambientPanner.connect(ambientGain);
+        ambientGain.connect(audioContext.destination);
+
+        ambientAudio.play().catch(err => {
+            console.log('Ambient audio autoplay blocked, will play on user interaction');
+        });
+
+        // Show volume control
+        ambientVolumeControl.classList.remove('hidden');
+
+        // Start audio loop if not already running
+        startAudioLoop();
+    } else {
+        // Hide volume control
+        ambientVolumeControl.classList.add('hidden');
+    }
+});
+
+ambientVolumeInput.addEventListener('input', (e) => {
+    const volume = parseInt(e.target.value) || 50;
+    document.getElementById('ambientVolumeValue').textContent = volume;
+    if (ambientGain) {
+        ambientGain.gain.value = volume / 100;
+    }
 });
 
 // Mouse movement shows settings
