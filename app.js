@@ -287,10 +287,23 @@ function updateAudio() {
 
 // Audio loop runs independently of animation frame
 let audioInterval = null;
+let lastAudioTime = null;
 
 function startAudioLoop() {
     if (audioInterval) return;
-    audioInterval = setInterval(updateAudio, 16); // ~60fps
+    lastAudioTime = performance.now();
+    audioInterval = setInterval(() => {
+        const now = performance.now();
+        const dt = Math.min(now - lastAudioTime, 100);
+        lastAudioTime = now;
+
+        // If tab is hidden, advance virtualTime here since RAF is throttled
+        if (document.hidden && isPlaying && speedMultiplier > 0) {
+            virtualTime += dt * speedMultiplier;
+        }
+
+        updateAudio();
+    }, 16);
 }
 
 function stopAudioLoop() {
