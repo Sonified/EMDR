@@ -907,56 +907,57 @@ function updateReverbMix() {
     reverbWetGain.gain.setTargetAtTime(wet, audioContext.currentTime, 0.05);
 }
 
-// Start music playback from current position (creates new BufferSourceNode)
+// Start music playback - reuse source if exists, just fade in
 function startMusicPlayback() {
-    console.log('startMusicPlayback called', { musicBuffer: !!musicBuffer, audioContext: !!audioContext, musicIsPlaying });
+    console.log('startMusicPlayback called', { musicBuffer: !!musicBuffer, musicSource: !!musicSource, musicIsPlaying });
     if (!musicBuffer || !audioContext || musicIsPlaying) {
-        console.log('startMusicPlayback EARLY RETURN');
         return;
     }
 
-    // Create new source node (can only be played once)
-    musicSource = audioContext.createBufferSource();
-    musicSource.buffer = musicBuffer;
-    musicSource.loop = true;
-    musicSource.playbackRate.value = Math.max(0.01, speedMultiplier);
+    // Create source only if needed (first time or after track change)
+    if (!musicSource) {
+        musicSource = audioContext.createBufferSource();
+        musicSource.buffer = musicBuffer;
+        musicSource.loop = true;
+        musicSource.playbackRate.value = speedMultiplier;
 
-    // Connect through panner and gain
-    if (!musicPanner) {
-        musicPanner = audioContext.createStereoPanner();
-        musicGain = audioContext.createGain();
-        musicPanner.connect(musicGain);
-        musicGain.connect(masterGain);
+        // Create panner/gain if needed
+        if (!musicPanner) {
+            musicPanner = audioContext.createStereoPanner();
+            musicGain = audioContext.createGain();
+            musicGain.gain.value = 0;
+            musicPanner.connect(musicGain);
+            musicGain.connect(masterGain);
+        }
+
+        musicSource.connect(musicPanner);
+        musicSource.start(0, musicPausedAt % musicBuffer.duration);
+        console.log('startMusicPlayback CREATED source at position', musicPausedAt);
     }
 
-    // Start at 0, ramp up over RAMP_DURATION to match ball speed ramp
+    // Fade in
     musicGain.gain.cancelScheduledValues(audioContext.currentTime);
-    musicGain.gain.setValueAtTime(0, audioContext.currentTime);
+    musicGain.gain.setValueAtTime(musicGain.gain.value, audioContext.currentTime);
     musicGain.gain.linearRampToValueAtTime(settings.musicVolume / 100, audioContext.currentTime + RAMP_DURATION / 1000);
 
-    musicSource.connect(musicPanner);
-
-    // Start from paused position
-    console.log('startMusicPlayback POSITION', { musicPausedAt, duration: musicBuffer.duration });
-    musicSource.start(0, musicPausedAt % musicBuffer.duration);
     musicStartTime = audioContext.currentTime;
     musicIsPlaying = true;
-    console.log('startMusicPlayback SUCCESS', { musicIsPlaying, playbackRate: musicSource.playbackRate.value });
+    console.log('startMusicPlayback SUCCESS - fading in');
 }
 
-// Stop music playback (position already tracked in updateMusicPlaybackRate)
+// Stop music playback - just fade gain to 0, keep source alive
 function stopMusicPlayback() {
-    console.log('stopMusicPlayback called', { musicSource: !!musicSource, musicIsPlaying, musicPausedAt });
-    if (!musicSource || !musicIsPlaying) {
+    console.log('stopMusicPlayback called', { musicSource: !!musicSource, musicIsPlaying });
+    if (!musicGain || !musicIsPlaying) {
         return;
     }
 
-    musicSource.stop();
-    musicSource.disconnect();
-    musicSource = null;
+    // Just fade out - source stays alive at rate 0
+    musicGain.gain.cancelScheduledValues(audioContext.currentTime);
+    musicGain.gain.setValueAtTime(musicGain.gain.value, audioContext.currentTime);
+    musicGain.gain.linearRampToValueAtTime(0, audioContext.currentTime + RAMP_DURATION / 1000);
     musicIsPlaying = false;
-    lastMusicUpdateTime = 0; // Reset for next play
-    console.log('stopMusicPlayback DONE at position', musicPausedAt);
+    console.log('stopMusicPlayback DONE - fading to 0');
 }
 
 // Update music playback rate and track position (true sample-rate change = pitch shifts with speed)
@@ -971,7 +972,7 @@ function updateMusicPlaybackRate(rate) {
         musicPausedAt = (musicPausedAt + deltaTime * musicSource.playbackRate.value) % musicBuffer.duration;
 
         // Update rate for next frame
-        musicSource.playbackRate.value = Math.max(0.01, rate);
+        musicSource.playbackRate.value = rate;
     }
 }
 
