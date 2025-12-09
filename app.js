@@ -919,7 +919,7 @@ function startMusicPlayback() {
     musicSource = audioContext.createBufferSource();
     musicSource.buffer = musicBuffer;
     musicSource.loop = true;
-    musicSource.playbackRate.value = Math.max(0.01, speedMultiplier); // Min 0.01 to avoid artifacts
+    musicSource.playbackRate.value = Math.max(0.01, speedMultiplier);
 
     // Connect through panner and gain
     if (!musicPanner) {
@@ -929,18 +929,18 @@ function startMusicPlayback() {
         musicGain.connect(masterGain);
     }
 
-    // Cancel any scheduled fade-out, then ramp up over RAMP_DURATION
+    // Set volume directly - playback rate ramp IS the fade effect
     musicGain.gain.cancelScheduledValues(audioContext.currentTime);
-    musicGain.gain.setValueAtTime(0, audioContext.currentTime);
-    musicGain.gain.linearRampToValueAtTime(settings.musicVolume / 100, audioContext.currentTime + RAMP_DURATION / 1000);
+    musicGain.gain.setValueAtTime(settings.musicVolume / 100, audioContext.currentTime);
 
     musicSource.connect(musicPanner);
 
     // Start from paused position
+    console.log('startMusicPlayback POSITION', { musicPausedAt, duration: musicBuffer.duration });
     musicSource.start(0, musicPausedAt % musicBuffer.duration);
     musicStartTime = audioContext.currentTime;
     musicIsPlaying = true;
-    console.log('startMusicPlayback SUCCESS', { musicIsPlaying, gainValue: musicGain.gain.value });
+    console.log('startMusicPlayback SUCCESS', { musicIsPlaying, playbackRate: musicSource.playbackRate.value });
 }
 
 // Stop music playback and save position
@@ -953,7 +953,9 @@ function stopMusicPlayback() {
 
     // Calculate current position accounting for playback rate changes
     const elapsed = audioContext.currentTime - musicStartTime;
+    const oldPos = musicPausedAt;
     musicPausedAt = (musicPausedAt + elapsed * (musicSource.playbackRate.value || 1)) % musicBuffer.duration;
+    console.log('stopMusicPlayback POSITION', { oldPos, elapsed, rate: musicSource.playbackRate.value, newPos: musicPausedAt });
 
     musicSource.stop();
     musicSource.disconnect();
