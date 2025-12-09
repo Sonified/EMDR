@@ -1331,11 +1331,29 @@ function togglePlayPause() {
             startAudioLoop();
         }
 
+        // Fade music back in if it was playing
+        if (musicAudio && musicGain && audioContext) {
+            musicGain.gain.setTargetAtTime(settings.musicVolume / 100, audioContext.currentTime, 0.3);
+            if (musicAudio.paused) {
+                musicAudio.play().catch(() => {});
+            }
+        }
+
         // Start speed ramp UP
         rampDirection = 'up';
         rampStartTime = performance.now();
         rampStartSpeed = speedMultiplier;
     } else {
+        // Fade out music when stopping
+        if (musicAudio && musicGain && audioContext && !musicAudio.paused) {
+            musicGain.gain.setTargetAtTime(0, audioContext.currentTime, 0.3);
+            setTimeout(() => {
+                if (!isPlaying && musicAudio) {
+                    musicAudio.pause();
+                }
+            }, 400);
+        }
+
         const headingToZero = isHeadingTowardZero();
 
         if (headingToZero) {
