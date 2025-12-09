@@ -178,6 +178,7 @@ let settings = {
     audioEnabled: true,
     frequency: 110,
     toneVolume: 30,
+    tonePanAmount: 100,
     ambientPanAmount: 100
 };
 
@@ -286,8 +287,9 @@ function updateAudio() {
     if (gainNode) {
         if (settings.audioEnabled && speedMultiplier > 0) {
             const toneVol = (settings.toneVolume / 100) * speedMultiplier;
+            const scaledTonePan = audioPosition * (settings.tonePanAmount / 100);
             gainNode.gain.setTargetAtTime(toneVol, audioContext.currentTime, 0.1);
-            panner.pan.setTargetAtTime(audioPosition, audioContext.currentTime, 0.02);
+            panner.pan.setTargetAtTime(scaledTonePan, audioContext.currentTime, 0.02);
             oscillator.frequency.setTargetAtTime(settings.frequency, audioContext.currentTime, 0.1);
         } else {
             gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
@@ -805,6 +807,11 @@ frequencyInput.addEventListener('input', (e) => {
 document.getElementById('toneVolume').addEventListener('input', (e) => {
     settings.toneVolume = parseInt(e.target.value) || 30;
     document.getElementById('toneVolumeValue').textContent = settings.toneVolume;
+});
+
+document.getElementById('tonePan').addEventListener('input', (e) => {
+    settings.tonePanAmount = parseInt(e.target.value);
+    document.getElementById('tonePanValue').textContent = settings.tonePanAmount;
 });
 
 // Ambient audio controls
