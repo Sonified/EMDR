@@ -1399,7 +1399,9 @@ function togglePlayPause() {
         }
 
         // Start music playback (fade-in handled in startMusicPlayback)
+        console.log('togglePlayPause START', { musicBuffer: !!musicBuffer, audioContext: !!audioContext, musicIsPlaying });
         if (musicBuffer && audioContext) {
+            stopMusicPlayback(); // Force stop first in case timeout hasn't fired
             startMusicPlayback();
         }
 
