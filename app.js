@@ -263,58 +263,38 @@ function updateAudio() {
         lastAudioLog = Date.now();
     }
 
-    if (settings.audioEnabled && speedMultiplier > 0) {
-        // Use virtualTime for audio position (same as visual)
-        const cyclesPerSecond = settings.cyclesPerMinute / 60;
-        const period = 1000 / cyclesPerSecond;
-
-        let audioPosition;
-        if (settings.motionType === 'sine') {
-            const phase = (virtualTime / period) * Math.PI * 2;
-            audioPosition = Math.sin(phase);
-        } else {
-            const cycleProgress = ((virtualTime % period) + period) % period / period;
-            if (cycleProgress < 0.25) {
-                audioPosition = cycleProgress * 4;
-            } else if (cycleProgress < 0.75) {
-                audioPosition = 1 - ((cycleProgress - 0.25) * 4);
-            } else {
-                audioPosition = -1 + ((cycleProgress - 0.75) * 4);
-            }
-        }
-
-        // Volume scales with speed multiplier for smooth fade
-        const toneVol = (settings.toneVolume / 100) * speedMultiplier;
-        gainNode.gain.setTargetAtTime(toneVol, audioContext.currentTime, 0.1);
-        panner.pan.setTargetAtTime(audioPosition, audioContext.currentTime, 0.02);
-        oscillator.frequency.setTargetAtTime(settings.frequency, audioContext.currentTime, 0.1);
-
-        // Also pan ambient audio if connected
-        if (ambientPanner) {
-            ambientPanner.pan.setTargetAtTime(audioPosition, audioContext.currentTime, 0.02);
-        }
+    // Calculate audio position for panning
+    const cyclesPerSecond = settings.cyclesPerMinute / 60;
+    const period = 1000 / cyclesPerSecond;
+    let audioPosition;
+    if (settings.motionType === 'sine') {
+        const phase = (virtualTime / period) * Math.PI * 2;
+        audioPosition = Math.sin(phase);
     } else {
-        gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
+        const cycleProgress = ((virtualTime % period) + period) % period / period;
+        if (cycleProgress < 0.25) {
+            audioPosition = cycleProgress * 4;
+        } else if (cycleProgress < 0.75) {
+            audioPosition = 1 - ((cycleProgress - 0.25) * 4);
+        } else {
+            audioPosition = -1 + ((cycleProgress - 0.75) * 4);
+        }
     }
 
-    // Pan ambient audio even when oscillator is disabled (as long as playing)
-    if (ambientPanner && speedMultiplier > 0) {
-        const cyclesPerSecond = settings.cyclesPerMinute / 60;
-        const period = 1000 / cyclesPerSecond;
-        let audioPosition;
-        if (settings.motionType === 'sine') {
-            const phase = (virtualTime / period) * Math.PI * 2;
-            audioPosition = Math.sin(phase);
+    // Update oscillator (panning tone) if initialized
+    if (gainNode) {
+        if (settings.audioEnabled && speedMultiplier > 0) {
+            const toneVol = (settings.toneVolume / 100) * speedMultiplier;
+            gainNode.gain.setTargetAtTime(toneVol, audioContext.currentTime, 0.1);
+            panner.pan.setTargetAtTime(audioPosition, audioContext.currentTime, 0.02);
+            oscillator.frequency.setTargetAtTime(settings.frequency, audioContext.currentTime, 0.1);
         } else {
-            const cycleProgress = ((virtualTime % period) + period) % period / period;
-            if (cycleProgress < 0.25) {
-                audioPosition = cycleProgress * 4;
-            } else if (cycleProgress < 0.75) {
-                audioPosition = 1 - ((cycleProgress - 0.25) * 4);
-            } else {
-                audioPosition = -1 + ((cycleProgress - 0.75) * 4);
-            }
+            gainNode.gain.setTargetAtTime(0, audioContext.currentTime, 0.1);
         }
+    }
+
+    // Pan ambient audio (works independently of oscillator)
+    if (ambientPanner && speedMultiplier > 0) {
         ambientPanner.pan.setTargetAtTime(audioPosition, audioContext.currentTime, 0.02);
     }
 }
@@ -832,6 +812,12 @@ const ambientVolumeControl = document.querySelector('.ambient-volume-control');
 
 ambientAudioSelect.addEventListener('change', (e) => {
     const src = e.target.value;
+
+    // Set frequency to 65Hz for Music From The Sun
+    if (src.includes('Music From The Sun')) {
+        settings.frequency = 65;
+        frequencyInput.value = 65;
+    }
 
     // Stop and disconnect existing audio
     if (ambientAudio) {
