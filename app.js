@@ -929,9 +929,10 @@ function startMusicPlayback() {
         musicGain.connect(masterGain);
     }
 
-    // Set volume directly - playback rate ramp IS the fade effect
+    // Start at 0, ramp up over RAMP_DURATION to match ball speed ramp
     musicGain.gain.cancelScheduledValues(audioContext.currentTime);
-    musicGain.gain.setValueAtTime(settings.musicVolume / 100, audioContext.currentTime);
+    musicGain.gain.setValueAtTime(0, audioContext.currentTime);
+    musicGain.gain.linearRampToValueAtTime(settings.musicVolume / 100, audioContext.currentTime + RAMP_DURATION / 1000);
 
     musicSource.connect(musicPanner);
 
