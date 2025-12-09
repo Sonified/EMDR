@@ -790,11 +790,14 @@ let oscillator = null;
 let panner = null;
 let gainNode = null;
 
-// Music audio with panning
-let musicAudio = null;
-let musicSource = null;
+// Music audio with panning (using AudioBufferSourceNode for true sample-rate speed control)
+let musicBuffer = null;      // Decoded AudioBuffer
+let musicSource = null;      // AudioBufferSourceNode (recreated each play)
 let musicPanner = null;
 let musicGain = null;
+let musicStartTime = 0;      // audioContext.currentTime when started
+let musicPausedAt = 0;       // Offset into buffer when paused
+let musicIsPlaying = false;
 
 // Reverb nodes
 let reverbConvolver = null;
@@ -902,6 +905,53 @@ function updateReverbMix() {
 
     reverbDryGain.gain.setTargetAtTime(dry, audioContext.currentTime, 0.05);
     reverbWetGain.gain.setTargetAtTime(wet, audioContext.currentTime, 0.05);
+}
+
+// Start music playback from current position (creates new BufferSourceNode)
+function startMusicPlayback() {
+    if (!musicBuffer || !audioContext || musicIsPlaying) return;
+
+    // Create new source node (can only be played once)
+    musicSource = audioContext.createBufferSource();
+    musicSource.buffer = musicBuffer;
+    musicSource.loop = true;
+    musicSource.playbackRate.value = speedMultiplier || 0.001; // Avoid 0
+
+    // Connect through panner and gain
+    if (!musicPanner) {
+        musicPanner = audioContext.createStereoPanner();
+        musicGain = audioContext.createGain();
+        musicGain.gain.value = settings.musicVolume / 100;
+        musicPanner.connect(musicGain);
+        musicGain.connect(masterGain);
+    }
+    musicSource.connect(musicPanner);
+
+    // Start from paused position
+    musicSource.start(0, musicPausedAt % musicBuffer.duration);
+    musicStartTime = audioContext.currentTime;
+    musicIsPlaying = true;
+}
+
+// Stop music playback and save position
+function stopMusicPlayback() {
+    if (!musicSource || !musicIsPlaying) return;
+
+    // Calculate current position accounting for playback rate changes
+    const elapsed = audioContext.currentTime - musicStartTime;
+    musicPausedAt = (musicPausedAt + elapsed * (musicSource.playbackRate.value || 1)) % musicBuffer.duration;
+
+    musicSource.stop();
+    musicSource.disconnect();
+    musicSource = null;
+    musicIsPlaying = false;
+}
+
+// Update music playback rate (true sample-rate change = pitch shifts with speed)
+function updateMusicPlaybackRate(rate) {
+    if (musicSource && musicIsPlaying) {
+        musicSource.playbackRate.value = Math.max(0.001, rate); // Avoid 0
+    }
 }
 
 // Resize canvas to fill window
@@ -1185,10 +1235,8 @@ function calculateBallPosition(timestamp) {
         }
     }
 
-    // Sync music playback rate to ball speed (0 to 1)
-    if (musicAudio && !musicAudio.paused) {
-        musicAudio.playbackRate = speedMultiplier;
-    }
+    // Sync music playback rate to ball speed (true sample-rate change)
+    updateMusicPlaybackRate(speedMultiplier);
 }
 
 // Helper to convert hex to RGB
@@ -1336,12 +1384,10 @@ function togglePlayPause() {
             startAudioLoop();
         }
 
-        // Fade music back in (playbackRate ramps up with speedMultiplier)
-        if (musicAudio && musicGain && audioContext) {
+        // Start music playback (will ramp up with speedMultiplier)
+        if (musicBuffer && musicGain && audioContext) {
             musicGain.gain.setTargetAtTime(settings.musicVolume / 100, audioContext.currentTime, 0.3);
-            if (musicAudio.paused) {
-                musicAudio.play().catch(() => {});
-            }
+            startMusicPlayback();
         }
 
         // Start speed ramp UP
@@ -1349,12 +1395,12 @@ function togglePlayPause() {
         rampStartTime = performance.now();
         rampStartSpeed = speedMultiplier;
     } else {
-        // Fade out music when stopping
-        if (musicAudio && musicGain && audioContext && !musicAudio.paused) {
+        // Fade out and stop music
+        if (musicGain && audioContext && musicIsPlaying) {
             musicGain.gain.setTargetAtTime(0, audioContext.currentTime, 0.3);
             setTimeout(() => {
-                if (!isPlaying && musicAudio) {
-                    musicAudio.pause();
+                if (!isPlaying) {
+                    stopMusicPlayback();
                 }
             }, 400);
         }
@@ -1679,14 +1725,7 @@ function attachSettingsEventListeners() {
         }
 
         // Stop and disconnect existing audio
-        if (musicAudio) {
-            musicAudio.pause();
-            musicAudio = null;
-        }
-        if (musicSource) {
-            musicSource.disconnect();
-            musicSource = null;
-        }
+        stopMusicPlayback();
         if (musicPanner) {
             musicPanner.disconnect();
             musicPanner = null;
@@ -1695,6 +1734,8 @@ function attachSettingsEventListeners() {
             musicGain.disconnect();
             musicGain = null;
         }
+        musicBuffer = null;
+        musicPausedAt = 0;
 
         if (src) {
             // Initialize audio context and reverb chain
@@ -1703,24 +1744,28 @@ function attachSettingsEventListeners() {
                 audioContext.resume();
             }
 
-            // Create new audio element
-            musicAudio = new Audio(src);
-            musicAudio.loop = true;
+            // Fetch and decode audio to buffer (enables true sample-rate speed control)
+            fetch(src)
+                .then(response => response.arrayBuffer())
+                .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+                .then(buffer => {
+                    musicBuffer = buffer;
 
-            // Route through Web Audio API for panning
-            musicSource = audioContext.createMediaElementSource(musicAudio);
-            musicPanner = audioContext.createStereoPanner();
-            musicGain = audioContext.createGain();
-            musicGain.gain.value = settings.musicVolume / 100;
+                    // Create panner and gain nodes
+                    musicPanner = audioContext.createStereoPanner();
+                    musicGain = audioContext.createGain();
+                    musicGain.gain.value = settings.musicVolume / 100;
+                    musicPanner.connect(musicGain);
+                    musicGain.connect(masterGain);
 
-            musicSource.connect(musicPanner);
-            musicPanner.connect(musicGain);
-            // Route through master for reverb processing
-            musicGain.connect(masterGain);
-
-            musicAudio.play().catch(err => {
-                console.log('Music audio autoplay blocked, will play on user interaction');
-            });
+                    // Auto-play if already playing
+                    if (isPlaying) {
+                        startMusicPlayback();
+                    }
+                })
+                .catch(err => {
+                    console.log('Failed to load music:', err);
+                });
 
             // Show volume/pan controls
             musicVolumeControls.forEach(el => el.classList.remove('hidden'));
@@ -1978,17 +2023,17 @@ function toggleAudio() {
         }
         startAudioLoop();
         // Resume music if it was playing
-        if (musicAudio && musicAudio.paused && musicGain && audioContext) {
+        if (musicBuffer && !musicIsPlaying && musicGain && audioContext) {
             musicGain.gain.setTargetAtTime(settings.musicVolume / 100, audioContext.currentTime, 0.3);
-            musicAudio.play();
+            startMusicPlayback();
         }
     } else {
-        // Fade out and pause music
-        if (audioContext && musicAudio && musicGain && !musicAudio.paused) {
+        // Fade out and stop music
+        if (audioContext && musicIsPlaying && musicGain) {
             musicGain.gain.setTargetAtTime(0, audioContext.currentTime, 0.3);
             setTimeout(() => {
-                if (!settings.audioEnabled && musicAudio) {
-                    musicAudio.pause();
+                if (!settings.audioEnabled) {
+                    stopMusicPlayback();
                 }
             }, 400);
         }
