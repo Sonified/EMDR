@@ -1184,6 +1184,11 @@ function calculateBallPosition(timestamp) {
             ballPosition = 0;
         }
     }
+
+    // Sync music playback rate to ball speed (clamp to valid range 0.25-2.0)
+    if (musicAudio && !musicAudio.paused) {
+        musicAudio.playbackRate = Math.max(0.25, Math.min(2.0, speedMultiplier));
+    }
 }
 
 // Helper to convert hex to RGB
@@ -1333,6 +1338,7 @@ function togglePlayPause() {
 
         // Fade music back in if it was playing
         if (musicAudio && musicGain && audioContext) {
+            musicAudio.playbackRate = 1.0; // Reset to normal speed
             musicGain.gain.setTargetAtTime(settings.musicVolume / 100, audioContext.currentTime, 0.3);
             if (musicAudio.paused) {
                 musicAudio.play().catch(() => {});
