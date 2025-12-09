@@ -1398,15 +1398,15 @@ function togglePlayPause() {
         rampStartTime = performance.now();
         rampStartSpeed = speedMultiplier;
     } else {
-        // Fade out and stop music
+        // Gentle fade out - let playback rate slowdown do most of the work
         if (musicGain && audioContext && musicIsPlaying) {
             musicGain.gain.setValueAtTime(musicGain.gain.value, audioContext.currentTime);
-            musicGain.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.3);
+            musicGain.gain.linearRampToValueAtTime(0, audioContext.currentTime + 1.2);
             setTimeout(() => {
                 if (!isPlaying) {
                     stopMusicPlayback();
                 }
-            }, 350);
+            }, 1300);
         }
 
         const headingToZero = isHeadingTowardZero();
@@ -2031,15 +2031,15 @@ function toggleAudio() {
             startMusicPlayback();
         }
     } else {
-        // Fade out and stop music
+        // Gentle fade out - let playback rate slowdown do most of the work
         if (audioContext && musicIsPlaying && musicGain) {
             musicGain.gain.setValueAtTime(musicGain.gain.value, audioContext.currentTime);
-            musicGain.gain.linearRampToValueAtTime(0, audioContext.currentTime + 0.3);
+            musicGain.gain.linearRampToValueAtTime(0, audioContext.currentTime + 1.2);
             setTimeout(() => {
                 if (!settings.audioEnabled) {
                     stopMusicPlayback();
                 }
-            }, 350);
+            }, 1300);
         }
     }
     updateAudio();
