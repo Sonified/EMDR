@@ -42,9 +42,9 @@
       { "value": "sine", "label": "Sine (ease at edges)" },
       { "value": "linear", "label": "Linear (constant speed)" }
     ]},
-    { "type": "range", "id": "ballSize", "label": "Ball Size", "min": 10, "max": 100, "value": 60, "showValue": true },
-    { "type": "color", "id": "ballColor", "label": "Ball Color", "value": "#db4343" },
-    { "type": "color", "id": "bgColor", "label": "Background Color", "value": "#000000" },
+    { "type": "range", "id": "ballSize", "label": "Ball Size", "min": 10, "max": 100, "value": 10, "showValue": true },
+    { "type": "color", "id": "ballColor", "label": "Ball Color", "value": "#5661fa" },
+    { "type": "color", "id": "bgColor", "label": "Background Color", "value": "#03040c" },
     { "type": "select", "id": "ballStyle", "label": "Ball Style", "options": [
       { "value": "flat", "label": "Flat" },
       { "value": "sphere", "label": "Sphere (3D)", "selected": true }
@@ -55,21 +55,21 @@
       { "value": "basic", "label": "Basic" },
       { "value": "3d", "label": "3D Depth" },
       { "value": "fluid", "label": "Fluid" },
-      { "value": "ripple", "label": "Ripple Waves" }
+      { "value": "ripple", "label": "Ripple Waves", "selected": true }
     ]},
     { "type": "range", "id": "trailLength", "label": "Trail Length", "min": 5, "max": 50, "value": 15, "showValue": true, "className": "trail-options hidden" },
     { "type": "select", "id": "waveGridSize", "label": "Grid Size", "className": "ripple-options hidden", "options": [
       { "value": "256", "label": "256 (Fast)" },
       { "value": "512", "label": "512 (Medium)" },
-      { "value": "1024", "label": "1024 (High Detail)" }
+      { "value": "1024", "label": "1024 (High Detail)", "selected": true }
     ]},
-    { "type": "range", "id": "waveSourceSize", "label": "Source Size", "min": 0, "max": 20, "step": 0.1, "value": 10, "showValue": true, "suffix": "%", "className": "ripple-options hidden" },
-    { "type": "range", "id": "simSteps", "label": "Sim Steps", "min": 1, "max": 16, "step": 1, "value": 1, "showValue": true, "className": "ripple-options hidden" },
-    { "type": "range", "id": "waveSpeed", "label": "Wave Speed", "min": 0.01, "max": 0.5, "step": 0.01, "value": 0.3, "showValue": true, "className": "ripple-options hidden" },
-    { "type": "range", "id": "waveDamping", "label": "Wave Damping", "min": 0.9, "max": 0.999, "step": 0.001, "value": 0.988, "showValue": true, "className": "ripple-options hidden" },
-    { "type": "range", "id": "waveForce", "label": "Wave Force", "min": 0.05, "max": 1, "step": 0.01, "value": 0.15, "showValue": true, "className": "ripple-options hidden" },
-    { "type": "range", "id": "edgeReflect", "label": "Edge Reflect", "min": 0, "max": 100, "step": 5, "value": 0, "showValue": true, "suffix": "%", "className": "ripple-options hidden" },
-    { "type": "range", "id": "edgeBoundary", "label": "Edge Boundary", "min": 0, "max": 15, "step": 0.1, "value": 3, "showValue": true, "suffix": "%", "className": "ripple-options hidden" },
+    { "type": "range", "id": "waveSourceSize", "label": "Source Size", "min": 0, "max": 20, "step": 0.1, "value": 6.5, "showValue": true, "suffix": "%", "className": "ripple-options hidden" },
+    { "type": "range", "id": "simSteps", "label": "Sim Steps", "min": 1, "max": 16, "step": 1, "value": 4, "showValue": true, "className": "ripple-options hidden" },
+    { "type": "range", "id": "waveSpeed", "label": "Wave Speed", "min": 0.01, "max": 0.49, "step": 0.01, "value": 0.49, "showValue": true, "className": "ripple-options hidden" },
+    { "type": "range", "id": "waveDamping", "label": "Wave Damping", "min": 0.9, "max": 0.999, "step": 0.001, "value": 0.996, "showValue": true, "className": "ripple-options hidden" },
+    { "type": "range", "id": "waveForce", "label": "Wave Force", "min": 0.05, "max": 1, "step": 0.01, "value": 0.30, "showValue": true, "className": "ripple-options hidden" },
+    { "type": "range", "id": "edgeReflect", "label": "Edge Reflect", "min": 0, "max": 100, "step": 5, "value": 10, "showValue": true, "suffix": "%", "className": "ripple-options hidden" },
+    { "type": "range", "id": "edgeBoundary", "label": "Edge Boundary", "min": 0, "max": 15, "step": 0.1, "value": 1.0, "showValue": true, "suffix": "%", "className": "ripple-options hidden" },
     { "type": "range", "id": "trailOpacity", "label": "Trail Opacity", "min": 10, "max": 100, "value": 15, "showValue": true, "suffix": "%", "className": "trail-options hidden" },
     { "type": "music", "id": "musicSelect", "label": "Music" },
     { "type": "range", "id": "musicVolume", "label": "Music Volume", "min": 0, "max": 100, "value": 50, "showValue": true, "suffix": "%", "className": "music-volume-control hidden" },

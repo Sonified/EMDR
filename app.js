@@ -118,10 +118,12 @@ function updateFluidShader() {
     // Pass all trail positions to shader
     const positions = [];
     const sizes = [];
+    const len = trailHistory.length;
 
-    for (let i = 0; i < trailHistory.length; i++) {
-        const progress = i / trailHistory.length;
-        positions.push(new THREE.Vector2(trailHistory[i].x, window.innerHeight - trailHistory[i].y));
+    for (let i = 0; i < len; i++) {
+        const point = trailHistory.get(i);
+        const progress = i / len;
+        positions.push(new THREE.Vector2(point.x, window.innerHeight - point.y));
         // Smaller radii for tighter metaballs
         sizes.push(settings.ballSize * (0.15 + progress * 0.35));
     }
@@ -344,28 +346,28 @@ const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/
 const defaultSettings = {
     cyclesPerMinute: 40,
     motionType: 'sine',
-    ballSize: isMobile ? 30 : 60,
-    ballColor: '#db4343',
+    ballSize: isMobile ? 30 : 10,
+    ballColor: '#5661fa',
     ballStyle: 'sphere',
     glowEnabled: false,
-    trailStyle: 'none',
+    trailStyle: 'ripple',
     trailLength: 15,
     trailOpacity: 15,
-    bgColor: '#000000',
+    bgColor: '#03040c',
     audioEnabled: true,
     frequency: 110,
     toneVolume: 30,
     tonePanAmount: 100,
     musicPanAmount: 80,
     musicVolume: 50,
-    waveSpeed: 0.3,
-    waveDamping: 0.988,
-    waveForce: 0.15,
-    waveSourceSize: 10,
-    waveGridSize: 256,
-    simSteps: 1,
-    edgeReflect: 0,
-    edgeBoundary: 3,
+    waveSpeed: 0.49,
+    waveDamping: 0.996,
+    waveForce: 0.30,
+    waveSourceSize: 6.5,
+    waveGridSize: 1024,
+    simSteps: 4,
+    edgeReflect: 0.1,
+    edgeBoundary: 1,
     reverbEnabled: false,
     reverbType: 'room',
     reverbMix: 15,
@@ -409,8 +411,53 @@ const settings = new Proxy(settingsData, {
     }
 });
 
+// Circular buffer for trail history - O(1) operations vs O(n) array.shift()
+class CircularBuffer {
+    constructor(maxSize) {
+        this.maxSize = maxSize;
+        this.buffer = new Array(maxSize);
+        this.head = 0;
+        this.size = 0;
+    }
+
+    push(item) {
+        this.buffer[this.head] = item;
+        this.head = (this.head + 1) % this.maxSize;
+        if (this.size < this.maxSize) this.size++;
+    }
+
+    get length() { return this.size; }
+
+    get(index) {
+        if (index >= this.size) return undefined;
+        // Read from oldest to newest
+        const readIndex = (this.head - this.size + index + this.maxSize) % this.maxSize;
+        return this.buffer[readIndex];
+    }
+
+    clear() { this.size = 0; this.head = 0; }
+
+    resize(newMaxSize) {
+        if (newMaxSize === this.maxSize) return;
+        const newBuffer = new Array(newMaxSize);
+        const copyCount = Math.min(this.size, newMaxSize);
+        for (let i = 0; i < copyCount; i++) {
+            newBuffer[i] = this.get(this.size - copyCount + i);
+        }
+        this.buffer = newBuffer;
+        this.maxSize = newMaxSize;
+        this.size = copyCount;
+        this.head = copyCount % newMaxSize;
+    }
+
+    // Iterator for for...of loops
+    *[Symbol.iterator]() {
+        for (let i = 0; i < this.size; i++) yield this.get(i);
+    }
+}
+
 // Trail history for motion trail effect
-const trailHistory = [];
+const trailHistory = new CircularBuffer(50); // Max trail length from settings
 
 // Wave equation simulation (WebGL)
 let waveRenderer, waveScene, waveCamera, waveDisplayScene;
@@ -755,11 +802,41 @@ let reverbDryGain = null;
 let reverbWetGain = null;
 let masterGain = null;
 
-// Generate impulse response for reverb
-function createReverbImpulse(audioCtx, type, decay) {
-    const sampleRate = audioCtx.sampleRate;
+// Web Worker for reverb impulse generation (non-blocking)
+let reverbWorker = null;
+let reverbRequestId = 0;
 
-    // Different reverb types have different characteristics
+function initReverbWorker() {
+    if (reverbWorker) return;
+
+    try {
+        reverbWorker = new Worker('reverb-worker.js');
+        reverbWorker.onmessage = function(e) {
+            const { channels, length, sampleRate } = e.data;
+
+            if (!audioContext || !reverbConvolver) return;
+
+            // Create AudioBuffer from worker's raw data
+            const impulse = audioContext.createBuffer(2, length, sampleRate);
+            impulse.copyToChannel(channels[0], 0);
+            impulse.copyToChannel(channels[1], 1);
+
+            reverbConvolver.buffer = impulse;
+        };
+
+        reverbWorker.onerror = function(err) {
+            console.warn('Reverb worker error, falling back to main thread:', err);
+            reverbWorker = null;
+        };
+    } catch (err) {
+        console.warn('Web Worker not supported, using main thread for reverb');
+        reverbWorker = null;
+    }
+}
+
+// Fallback: Generate impulse on main thread (blocks UI)
+function createReverbImpulseFallback(audioCtx, type, decay) {
+    const sampleRate = audioCtx.sampleRate;
     const presets = {
         room: { duration: decay * 0.7, earlyDelay: 0.01, diffusion: 0.7, damping: 0.3 },
         hall: { duration: decay * 1.2, earlyDelay: 0.03, diffusion: 0.85, damping: 0.15 },
@@ -769,52 +846,49 @@ function createReverbImpulse(audioCtx, type, decay) {
 
     const preset = presets[type] || presets.room;
     const duration = Math.min(preset.duration, 6);
-    const length = sampleRate * duration;
+    const length = Math.floor(sampleRate * duration);
     const impulse = audioCtx.createBuffer(2, length, sampleRate);
 
     for (let channel = 0; channel < 2; channel++) {
         const channelData = impulse.getChannelData(channel);
+        const stereoOffset = channel === 0 ? 1 : 0.97;
 
         for (let i = 0; i < length; i++) {
             const t = i / sampleRate;
             const progress = i / length;
-
-            // Exponential decay envelope
             const envelope = Math.exp(-t / (decay * 0.5));
-
-            // High frequency damping over time
             const dampingFactor = 1 - (progress * preset.damping);
+            let sample = Math.random() * 2 - 1;
 
-            // Generate noise with diffusion characteristics
-            let sample = (Math.random() * 2 - 1);
-
-            // Add early reflections for more realistic sound
             if (t < preset.earlyDelay * 3) {
-                const earlyAmp = Math.exp(-t / preset.earlyDelay) * 0.5;
-                sample += (Math.random() * 2 - 1) * earlyAmp;
+                sample += (Math.random() * 2 - 1) * Math.exp(-t / preset.earlyDelay) * 0.5;
             }
-
-            // Apply diffusion (smoothing for more natural reverb)
             if (preset.diffusion > 0.5 && i > 0) {
                 sample = sample * (1 - preset.diffusion * 0.3) + channelData[i - 1] * preset.diffusion * 0.3;
             }
 
-            // Stereo decorrelation (slight offset between channels)
-            const stereoOffset = channel === 0 ? 1 : 0.97;
-
             channelData[i] = sample * envelope * dampingFactor * stereoOffset;
         }
     }
-
     return impulse;
 }
 
-// Update reverb impulse response
+// Update reverb impulse response (async via Worker, fallback to sync)
 function updateReverbImpulse() {
     if (!audioContext || !reverbConvolver) return;
 
-    const impulse = createReverbImpulse(audioContext, settings.reverbType, settings.reverbDecay);
-    reverbConvolver.buffer = impulse;
+    if (reverbWorker) {
+        // Non-blocking: send to worker
+        reverbWorker.postMessage({
+            id: ++reverbRequestId,
+            sampleRate: audioContext.sampleRate,
+            type: settings.reverbType,
+            decay: settings.reverbDecay
+        });
+    } else {
+        // Blocking fallback
+        reverbConvolver.buffer = createReverbImpulseFallback(audioContext, settings.reverbType, settings.reverbDecay);
+    }
 }
 
 // Update reverb mix (wet/dry)
@@ -863,6 +937,9 @@ function initAudioContext() {
     reverbConvolver = audioContext.createConvolver();
     reverbDryGain = audioContext.createGain();
     reverbWetGain = audioContext.createGain();
+
+    // Initialize reverb worker (non-blocking impulse generation)
+    initReverbWorker();
 
     // Set initial reverb impulse
     updateReverbImpulse();
@@ -1140,15 +1217,12 @@ function draw() {
     const ballX = padding + ((ballPosition + 1) / 2) * travelWidth;
     const ballY = height / 2;
 
-    // Update trail history
+    // Update trail history (circular buffer auto-limits to maxSize)
     if (settings.trailStyle !== 'none') {
+        trailHistory.resize(settings.trailLength); // Adjust capacity if setting changed
         trailHistory.push({ x: ballX, y: ballY });
-        // Keep positions based on trail length setting
-        while (trailHistory.length > settings.trailLength) {
-            trailHistory.shift();
-        }
     } else {
-        trailHistory.length = 0;
+        trailHistory.clear();
     }
 
     // Draw motion trail (Canvas 2D - basic and 3d styles only)
@@ -1156,24 +1230,24 @@ function draw() {
         const rgb = hexToRgb(settings.ballColor);
         const maxAlpha = settings.trailOpacity / 100;
 
-        for (let i = 0; i < trailHistory.length - 1; i++) {
-            const progress = i / trailHistory.length;
+        const len = trailHistory.length;
+        for (let i = 0; i < len - 1; i++) {
+            const point = trailHistory.get(i);
+            const progress = i / len;
             const alpha = progress * maxAlpha;
 
             let trailRadius, trailY;
             if (settings.trailStyle === '3d') {
-                // 3D effect: trail goes back into the screen
-                const depth = 1 - progress; // 0 = front, 1 = back
+                const depth = 1 - progress;
                 trailRadius = ballRadius * (0.2 + progress * 0.8) * (0.3 + progress * 0.7);
-                // Move up towards vanishing point as depth increases
-                trailY = trailHistory[i].y - (depth * ballRadius * 1.5);
+                trailY = point.y - (depth * ballRadius * 1.5);
             } else {
                 trailRadius = ballRadius * (0.3 + progress * 0.7);
-                trailY = trailHistory[i].y;
+                trailY = point.y;
             }
 
             ctx.beginPath();
-            ctx.arc(trailHistory[i].x, trailY, trailRadius, 0, Math.PI * 2);
+            ctx.arc(point.x, trailY, trailRadius, 0, Math.PI * 2);
             ctx.fillStyle = `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, ${alpha})`;
             ctx.fill();
         }
