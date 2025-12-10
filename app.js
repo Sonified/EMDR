@@ -1834,8 +1834,10 @@ function attachSettingsEventListeners() {
     });
 
     // Sync music picker selection to settings select
+    console.log('[attachSettings] selectedMusicValue:', selectedMusicValue);
     if (selectedMusicValue) {
         musicSelectEl.value = selectedMusicValue;
+        console.log('[attachSettings] Set musicSelectEl.value, now is:', musicSelectEl.value);
         // Show volume controls if a track is selected
         musicVolumeControls.forEach(el => el.classList.remove('hidden'));
     }
@@ -2155,8 +2157,10 @@ fetch('settings-config.json')
 
         // Sync to settings select if it exists
         const musicSelectEl = document.getElementById('musicSelect');
+        console.log('[MusicPicker] fetch done. musicSelect exists?', !!musicSelectEl);
         if (musicSelectEl) {
             musicSelectEl.value = DEFAULT_TRACK;
+            console.log('[MusicPicker] Set musicSelect.value, now is:', musicSelectEl.value);
         }
     });
 
