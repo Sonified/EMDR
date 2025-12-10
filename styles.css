@@ -245,17 +245,98 @@ html, body {
     align-items: center;
     justify-content: center;
     transition: background 0.2s;
-    /* Prevent text selection on mobile */
     -webkit-tap-highlight-color: transparent;
     user-select: none;
 }
 
-.play-pause-btn {
+/* Order from right: mute, play, music */
+.audio-btn {
     right: max(20px, env(safe-area-inset-right));
 }
 
-.audio-btn {
+.play-pause-btn {
     right: calc(max(20px, env(safe-area-inset-right)) + 60px);
+}
+
+.music-picker {
+    position: fixed;
+    bottom: max(20px, env(safe-area-inset-bottom));
+    right: calc(max(20px, env(safe-area-inset-right)) + 120px);
+    z-index: 100;
+}
+
+.music-picker-label {
+    height: 50px;
+    padding: 0 16px;
+    border: none;
+    border-radius: 25px;
+    background: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 60px;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: background 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+.music-picker-label:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.music-picker-dropdown {
+    position: absolute;
+    bottom: 60px;
+    right: 0;
+    min-width: 200px;
+    max-height: 350px;
+    overflow-y: auto;
+    background: rgba(30, 30, 40, 0.95);
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    padding: 8px 0;
+}
+
+.music-picker-dropdown.hidden {
+    display: none;
+}
+
+.music-picker-dropdown .category {
+    padding: 10px 14px 6px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.music-picker-dropdown .track {
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    color: #fff;
+    transition: background 0.15s;
+}
+
+.music-picker-dropdown .track:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.music-picker-dropdown .track.selected {
+    background: rgba(100, 150, 255, 0.3);
+}
+
+.music-picker-dropdown .track.none-option {
+    color: rgba(255, 255, 255, 0.6);
+    font-style: italic;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    margin-bottom: 4px;
 }
 
 .audio-btn:hover,

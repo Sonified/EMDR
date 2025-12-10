@@ -2070,6 +2070,113 @@ audioBtn.addEventListener('touchend', (e) => {
     toggleAudio();
 });
 
+// Music picker dropdown
+const musicPicker = document.getElementById('musicPicker');
+const musicPickerLabel = document.getElementById('musicPickerLabel');
+const musicPickerDropdown = document.getElementById('musicPickerDropdown');
+let selectedMusicValue = '';
+
+// Load music tracks and populate dropdown
+fetch('settings-config.json')
+    .then(r => r.json())
+    .then(config => {
+        const tracks = config.musicTracks;
+        let html = '<div class="track none-option" data-value="">None</div>';
+
+        for (const category in tracks) {
+            html += `<div class="category">${category}</div>`;
+            for (const track of tracks[category]) {
+                html += `<div class="track" data-value="${track.value}">${track.label}</div>`;
+            }
+        }
+        musicPickerDropdown.innerHTML = html;
+    });
+
+// Toggle dropdown
+musicPickerLabel.addEventListener('click', () => {
+    musicPickerDropdown.classList.toggle('hidden');
+});
+
+// Handle track selection
+musicPickerDropdown.addEventListener('click', (e) => {
+    const track = e.target.closest('.track');
+    if (!track) return;
+
+    const value = track.dataset.value;
+    const label = track.textContent;
+
+    // Update selection
+    selectedMusicValue = value;
+    musicPickerLabel.textContent = label;
+    musicPickerDropdown.classList.add('hidden');
+
+    // Update selected styling
+    musicPickerDropdown.querySelectorAll('.track').forEach(t => t.classList.remove('selected'));
+    track.classList.add('selected');
+
+    // Trigger music change (same as settings musicSelect)
+    const musicSelectEl = document.getElementById('musicSelect');
+    if (musicSelectEl) {
+        musicSelectEl.value = value;
+        musicSelectEl.dispatchEvent(new Event('change'));
+    } else {
+        // Direct load if settings select doesn't exist
+        loadMusicTrack(value);
+    }
+});
+
+// Close dropdown when clicking outside
+document.addEventListener('click', (e) => {
+    if (!musicPicker.contains(e.target)) {
+        musicPickerDropdown.classList.add('hidden');
+    }
+});
+
+// Helper to load music track directly
+function loadMusicTrack(src) {
+    // Stop existing
+    stopMusicPlayback();
+    if (musicSource) {
+        musicSource.stop();
+        musicSource.disconnect();
+        musicSource = null;
+    }
+    if (musicPanner) {
+        musicPanner.disconnect();
+        musicPanner = null;
+    }
+    if (musicGain) {
+        musicGain.disconnect();
+        musicGain = null;
+    }
+    musicBuffer = null;
+    musicPausedAt = 0;
+
+    if (!src) return;
+
+    initAudioContext();
+    if (audioContext.state === 'suspended') {
+        audioContext.resume();
+    }
+
+    fetch(src)
+        .then(response => response.arrayBuffer())
+        .then(arrayBuffer => audioContext.decodeAudioData(arrayBuffer))
+        .then(buffer => {
+            musicBuffer = buffer;
+            musicPanner = audioContext.createStereoPanner();
+            musicGain = audioContext.createGain();
+            musicGain.gain.value = 0;
+            musicPanner.connect(musicGain);
+            musicGain.connect(masterGain);
+
+            if (isPlaying) {
+                startMusicPlayback();
+            }
+        })
+        .catch(err => console.log('Failed to load music:', err));
+}
+
 // Initialize
 resizeCanvas();
 
