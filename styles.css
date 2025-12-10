@@ -267,7 +267,7 @@ html, body {
 
 .music-picker-label {
     height: 50px;
-    padding: 0 16px;
+    padding: 0 24px;
     border: none;
     border-radius: 25px;
     background: rgba(255, 255, 255, 0.2);
@@ -277,8 +277,8 @@ html, body {
     display: flex;
     align-items: center;
     justify-content: center;
-    min-width: 60px;
-    max-width: 160px;
+    min-width: 280px;
+    max-width: 350px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -295,13 +295,35 @@ html, body {
     position: absolute;
     bottom: 60px;
     right: 0;
-    min-width: 200px;
+    min-width: 280px;
     max-height: 350px;
     overflow-y: auto;
     background: rgba(30, 30, 40, 0.95);
     border-radius: 12px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     padding: 8px 0;
+    scrollbar-width: auto;
+    scrollbar-color: rgba(255, 255, 255, 0.8) rgba(80, 80, 90, 0.5);
+}
+
+.music-picker-dropdown::-webkit-scrollbar {
+    width: 12px;
+}
+
+.music-picker-dropdown::-webkit-scrollbar-track {
+    background: rgba(80, 80, 90, 0.5);
+    border-radius: 6px;
+    margin: 8px 4px;
+}
+
+.music-picker-dropdown::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.8);
+    border-radius: 6px;
+    border: 2px solid rgba(80, 80, 90, 0.5);
+}
+
+.music-picker-dropdown::-webkit-scrollbar-thumb:hover {
+    background: #fff;
 }
 
 .music-picker-dropdown.hidden {

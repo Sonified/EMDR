@@ -1,0 +1,10 @@
+NEXT STEPS
+==========
+
+1. Settings is a gear circle in the upper left that is clickable and drops down the settings menu.
+
+2. Add ability to click on canvas to also generate waves.
+
+3. Music playback amplitude affects the size of the source.
+
+4. Add more default frequencies for audio tracks.

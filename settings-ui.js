@@ -14,10 +14,11 @@ function generateSettingsHTML() {
 
         switch (setting.type) {
             case 'number':
+                const numStep = setting.step ? `step="${setting.step}"` : '';
                 html += `
                     <div class="setting-group ${className}">
                         <label for="${setting.id}">${setting.label}</label>
-                        <input type="number" id="${setting.id}" min="${setting.min}" max="${setting.max}" value="${setting.value}">
+                        <input type="number" id="${setting.id}" min="${setting.min}" max="${setting.max}" ${numStep} value="${setting.value}">
                     </div>`;
                 break;
 
@@ -25,11 +26,18 @@ function generateSettingsHTML() {
                 const step = setting.step ? `step="${setting.step}"` : '';
                 const suffix = setting.suffix || '';
                 const displayValue = setting.step && setting.step < 1 ? setting.value.toFixed(String(setting.step).split('.')[1]?.length || 1) : setting.value;
-                html += `
-                    <div class="setting-group ${className}">
-                        <label for="${setting.id}">${setting.label}: <span id="${setting.id}Value">${displayValue}</span>${suffix}</label>
-                        <input type="range" id="${setting.id}" min="${setting.min}" max="${setting.max}" ${step} value="${setting.value}">
-                    </div>`;
+                if (setting.hideLabel) {
+                    html += `
+                        <div class="setting-group ${className}">
+                            <input type="range" id="${setting.id}" min="${setting.min}" max="${setting.max}" ${step} value="${setting.value}">
+                        </div>`;
+                } else {
+                    html += `
+                        <div class="setting-group ${className}">
+                            <label for="${setting.id}">${setting.label}: <span id="${setting.id}Value">${displayValue}</span>${suffix}</label>
+                            <input type="range" id="${setting.id}" min="${setting.min}" max="${setting.max}" ${step} value="${setting.value}">
+                        </div>`;
+                }
                 break;
 
             case 'select':

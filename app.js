@@ -2,6 +2,18 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
+// Linear frequency slider (20-220 Hz range, direct mapping)
+const FREQ_MIN = 20;
+const FREQ_MAX = 220;
+
+function sliderToFreq(sliderVal) {
+    return Math.round(sliderVal);
+}
+
+function freqToSlider(freq) {
+    return Math.max(FREQ_MIN, Math.min(FREQ_MAX, Math.round(freq)));
+}
+
 // Dynamic favicon
 function updateFavicon(color) {
     const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
@@ -909,7 +921,6 @@ function updateReverbMix() {
 
 // Start music playback - reuse source if exists, just fade in
 function startMusicPlayback() {
-    console.log('startMusicPlayback called', { musicBuffer: !!musicBuffer, musicSource: !!musicSource, musicIsPlaying });
     if (!musicBuffer || !audioContext || musicIsPlaying) {
         return;
     }
@@ -932,7 +943,6 @@ function startMusicPlayback() {
 
         musicSource.connect(musicPanner);
         musicSource.start(0, musicPausedAt % musicBuffer.duration);
-        console.log('startMusicPlayback CREATED source at position', musicPausedAt);
     }
 
     // Fade in
@@ -942,13 +952,15 @@ function startMusicPlayback() {
 
     musicStartTime = audioContext.currentTime;
     musicIsPlaying = true;
-    console.log('startMusicPlayback SUCCESS - fading in');
 }
 
 // Stop music playback - just fade gain to 0, keep source alive
 function stopMusicPlayback() {
-    console.log('stopMusicPlayback called', { musicSource: !!musicSource, musicIsPlaying });
-    if (!musicGain || !musicIsPlaying) {
+    // Always mark as not playing
+    const wasPlaying = musicIsPlaying;
+    musicIsPlaying = false;
+
+    if (!musicGain || !wasPlaying) {
         return;
     }
 
@@ -956,8 +968,6 @@ function stopMusicPlayback() {
     musicGain.gain.cancelScheduledValues(audioContext.currentTime);
     musicGain.gain.setValueAtTime(musicGain.gain.value, audioContext.currentTime);
     musicGain.gain.linearRampToValueAtTime(0, audioContext.currentTime + RAMP_DURATION / 1000);
-    musicIsPlaying = false;
-    console.log('stopMusicPlayback DONE - fading to 0');
 }
 
 // Update music playback rate and track position (true sample-rate change = pitch shifts with speed)
@@ -1395,8 +1405,8 @@ function togglePlayPause() {
         waitingForEdge = false;
 
         // Initialize audio on first play if tone enabled
-        if (settings.audioEnabled && !audioContext) {
-            initAudio();
+        if (settings.audioEnabled) {
+            initAudio(); // Safe to call multiple times - checks internally
         }
         if (audioContext && audioContext.state === 'suspended') {
             audioContext.resume();
@@ -1407,7 +1417,6 @@ function togglePlayPause() {
         }
 
         // Start music playback (fade-in handled in startMusicPlayback)
-        console.log('togglePlayPause START', { musicBuffer: !!musicBuffer, audioContext: !!audioContext, musicIsPlaying });
         if (musicBuffer && audioContext) {
             stopMusicPlayback(); // Force stop first in case timeout hasn't fired
             startMusicPlayback();
@@ -1717,9 +1726,21 @@ function attachSettingsEventListeners() {
         updateAudio();
     });
 
-    // Frequency input
+    // Frequency input and logarithmic slider
+    const freqSlider = document.getElementById('frequencySlider');
+
     frequencyInput.addEventListener('input', (e) => {
         settings.frequency = Math.max(20, parseFloat(e.target.value) || 110);
+        // Sync slider (only if within slider range)
+        if (settings.frequency <= FREQ_MAX) {
+            freqSlider.value = freqToSlider(settings.frequency);
+        }
+    });
+
+    freqSlider.addEventListener('input', (e) => {
+        const freq = sliderToFreq(parseFloat(e.target.value));
+        settings.frequency = Math.round(freq * 10) / 10; // Round to 1 decimal
+        frequencyInput.value = settings.frequency;
     });
 
     // Tone volume
@@ -1742,14 +1763,24 @@ function attachSettingsEventListeners() {
     musicSelectEl.addEventListener('change', (e) => {
         const src = e.target.value;
 
-        // Set frequency to 65Hz for Music From The Sun
+        // Set frequency based on track
         if (src.includes('Music From The Sun')) {
             settings.frequency = 65;
             frequencyInput.value = 65;
+            freqSlider.value = freqToSlider(65);
+        } else if (src.includes('Imagine With Me')) {
+            settings.frequency = 97;
+            frequencyInput.value = 97;
+            freqSlider.value = freqToSlider(97);
         }
 
         // Stop and disconnect existing audio
         stopMusicPlayback();
+        if (musicSource) {
+            try { musicSource.stop(); } catch(e) {}
+            musicSource.disconnect();
+            musicSource = null;
+        }
         if (musicPanner) {
             musicPanner.disconnect();
             musicPanner = null;
@@ -1925,6 +1956,12 @@ function attachSettingsEventListeners() {
     // Audio options
     audioEnabledInput.checked = settings.audioEnabled;
     frequencyInput.value = settings.frequency;
+    // Sync frequency slider (logarithmic)
+    if (settings.frequency <= FREQ_MAX) {
+        freqSlider.value = freqToSlider(settings.frequency);
+    } else {
+        freqSlider.value = 100;
+    }
     document.getElementById('toneVolume').value = settings.toneVolume;
     document.getElementById('toneVolumeValue').textContent = settings.toneVolume;
     document.getElementById('tonePan').value = settings.tonePanAmount;
@@ -1980,6 +2017,10 @@ window.attachSettingsEventListeners = attachSettingsEventListeners;
 
 // Mouse movement shows settings
 document.addEventListener('mousemove', showSettings);
+
+// Scrolling/dragging in settings resets fade timer
+settingsPanel.addEventListener('scroll', showSettings);
+settingsPanel.addEventListener('touchmove', showSettings);
 
 // Click outside settings toggles visibility
 document.addEventListener('click', (e) => {
@@ -2064,10 +2105,14 @@ function toggleAudio() {
     }
     updateAudio();
 }
-audioBtn.addEventListener('click', toggleAudio);
+audioBtn.addEventListener('click', () => {
+    toggleAudio();
+    audioBtn.blur(); // Prevent spacebar from toggling mute
+});
 audioBtn.addEventListener('touchend', (e) => {
     e.preventDefault();
     toggleAudio();
+    audioBtn.blur();
 });
 
 // Music picker dropdown
@@ -2077,6 +2122,9 @@ const musicPickerDropdown = document.getElementById('musicPickerDropdown');
 let selectedMusicValue = '';
 
 // Load music tracks and populate dropdown
+const DEFAULT_TRACK = 'audio_files/Alexander - Imagine With Me (Day Mix).mp3';
+const DEFAULT_TRACK_LABEL = 'Imagine With Me (Day Mix)';
+
 fetch('settings-config.json')
     .then(r => r.json())
     .then(config => {
@@ -2086,10 +2134,17 @@ fetch('settings-config.json')
         for (const category in tracks) {
             html += `<div class="category">${category}</div>`;
             for (const track of tracks[category]) {
-                html += `<div class="track" data-value="${track.value}">${track.label}</div>`;
+                const isDefault = track.value === DEFAULT_TRACK;
+                html += `<div class="track${isDefault ? ' selected' : ''}" data-value="${track.value}">${track.label}</div>`;
             }
         }
         musicPickerDropdown.innerHTML = html;
+
+        // Set default track
+        selectedMusicValue = DEFAULT_TRACK;
+        musicPickerLabel.textContent = `Music: ${DEFAULT_TRACK_LABEL}`;
+        settings.frequency = 97;
+        loadMusicTrack(DEFAULT_TRACK);
     });
 
 // Toggle dropdown
@@ -2107,7 +2162,7 @@ musicPickerDropdown.addEventListener('click', (e) => {
 
     // Update selection
     selectedMusicValue = value;
-    musicPickerLabel.textContent = label;
+    musicPickerLabel.textContent = value ? `Music: ${label}` : 'Music: None';
     musicPickerDropdown.classList.add('hidden');
 
     // Update selected styling
@@ -2134,6 +2189,18 @@ document.addEventListener('click', (e) => {
 
 // Helper to load music track directly
 function loadMusicTrack(src) {
+    // Set frequency based on track
+    const freqSlider = document.getElementById('frequencySlider');
+    if (src && src.includes('Music From The Sun')) {
+        settings.frequency = 65;
+        if (frequencyInput) frequencyInput.value = 65;
+        if (freqSlider) freqSlider.value = freqToSlider(65);
+    } else if (src && src.includes('Imagine With Me')) {
+        settings.frequency = 97;
+        if (frequencyInput) frequencyInput.value = 97;
+        if (freqSlider) freqSlider.value = freqToSlider(97);
+    }
+
     // Stop existing
     stopMusicPlayback();
     if (musicSource) {
