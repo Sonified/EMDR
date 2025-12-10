@@ -2152,6 +2152,12 @@ fetch('settings-config.json')
         musicPickerLabel.textContent = `Music: ${DEFAULT_TRACK_LABEL}`;
         settings.frequency = 97;
         loadMusicTrack(DEFAULT_TRACK);
+
+        // Sync to settings select if it exists
+        const musicSelectEl = document.getElementById('musicSelect');
+        if (musicSelectEl) {
+            musicSelectEl.value = DEFAULT_TRACK;
+        }
     });
 
 // Toggle dropdown
