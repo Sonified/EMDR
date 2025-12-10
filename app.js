@@ -1833,6 +1833,13 @@ function attachSettingsEventListeners() {
         }
     });
 
+    // Sync music picker selection to settings select
+    if (selectedMusicValue) {
+        musicSelectEl.value = selectedMusicValue;
+        // Show volume controls if a track is selected
+        musicVolumeControls.forEach(el => el.classList.remove('hidden'));
+    }
+
     // Music volume
     musicVolumeInput.addEventListener('input', (e) => {
         const volume = parseInt(e.target.value);
