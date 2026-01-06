@@ -536,6 +536,11 @@ function initWaveEquation() {
         uniform float uEdgeReflect;    // 0 = absorb, 1 = full reflection
         uniform float uEdgeBoundary;   // Edge boundary width (0-0.15)
 
+        // User interaction wave source (click/drag)
+        uniform vec2 uUserWavePos;     // User click/drag position
+        uniform float uUserWaveStrength; // User wave strength
+        uniform float uUserWaveRadius;   // User wave radius
+
         void main() {
             vec2 texel = 1.0 / uResolution;
 
@@ -578,6 +583,16 @@ function initWaveEquation() {
                 next += uForceStrength * falloff;
             }
 
+            // Apply forcing from user click/drag position
+            if (uUserWaveStrength > 0.0) {
+                float userDist = length(vUv - uUserWavePos);
+                if (userDist < uUserWaveRadius) {
+                    float userFalloff = 1.0 - (userDist / uUserWaveRadius);
+                    userFalloff = userFalloff * userFalloff; // Quadratic falloff
+                    next += uUserWaveStrength * userFalloff;
+                }
+            }
+
             // Boundary conditions: blend between absorb and reflect
             float edgeDist = min(min(vUv.x, 1.0 - vUv.x), min(vUv.y, 1.0 - vUv.y));
             float edgeDamp = smoothstep(0.0, uEdgeBoundary, edgeDist);
@@ -601,7 +616,10 @@ function initWaveEquation() {
             uBallRadius: { value: 0.05 },
             uForceStrength: { value: 0.0 },
             uEdgeReflect: { value: 0.0 },
-            uEdgeBoundary: { value: 0.03 }
+            uEdgeBoundary: { value: 0.03 },
+            uUserWavePos: { value: new THREE.Vector2(-9999, -9999) },
+            uUserWaveStrength: { value: 0.0 },
+            uUserWaveRadius: { value: 0.05 }
         }
     });
 
@@ -702,6 +720,11 @@ function resizeWaveGrid() {
 let prevBallX = null;
 let prevBallY = null;
 
+// Track user drag for creating waves
+let isUserDragging = false;
+let userDragX = 0;
+let userDragY = 0;
+
 function updateWaveSimulation(ballX, ballY) {
     if (!waveInitialized || !waveSimMaterial) return;
 
@@ -744,6 +767,18 @@ function updateWaveSimulation(ballX, ballY) {
     const rgb = hexToRgb(settings.ballColor);
     waveDisplayMaterial.uniforms.uColor.value.set(rgb.r / 255, rgb.g / 255, rgb.b / 255);
     waveDisplayMaterial.uniforms.uOpacity.value = settings.trailOpacity / 100;
+
+    // Update user drag wave source
+    if (isUserDragging) {
+        const uvX = userDragX / window.innerWidth;
+        const uvY = 1.0 - (userDragY / window.innerHeight); // Flip Y for WebGL
+        waveSimMaterial.uniforms.uUserWavePos.value.set(uvX, uvY);
+        waveSimMaterial.uniforms.uUserWaveStrength.value = settings.waveForce * 0.5; // Use same force setting as ball
+        waveSimMaterial.uniforms.uUserWaveRadius.value = (settings.waveSourceSize / 100) * 0.1;
+    } else {
+        // No user interaction - disable user wave source
+        waveSimMaterial.uniforms.uUserWaveStrength.value = 0.0;
+    }
 
     // Run simulation steps (multiple steps per frame for higher precision)
     for (let step = 0; step < settings.simSteps; step++) {
@@ -2256,6 +2291,54 @@ function loadMusicTrack(src) {
         })
         .catch(err => console.log('Failed to load music:', err));
 }
+
+// Canvas click/drag to create waves (only in ripple mode)
+canvas.addEventListener('mousedown', (e) => {
+    if (settings.trailStyle !== 'ripple') return;
+    isUserDragging = true;
+    userDragX = e.clientX;
+    userDragY = e.clientY;
+});
+
+canvas.addEventListener('mousemove', (e) => {
+    if (!isUserDragging || settings.trailStyle !== 'ripple') return;
+    userDragX = e.clientX;
+    userDragY = e.clientY;
+});
+
+canvas.addEventListener('mouseup', () => {
+    isUserDragging = false;
+});
+
+canvas.addEventListener('mouseleave', () => {
+    isUserDragging = false;
+});
+
+// Touch support for mobile
+canvas.addEventListener('touchstart', (e) => {
+    if (settings.trailStyle !== 'ripple') return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    isUserDragging = true;
+    userDragX = touch.clientX;
+    userDragY = touch.clientY;
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+    if (!isUserDragging || settings.trailStyle !== 'ripple') return;
+    e.preventDefault();
+    const touch = e.touches[0];
+    userDragX = touch.clientX;
+    userDragY = touch.clientY;
+}, { passive: false });
+
+canvas.addEventListener('touchend', () => {
+    isUserDragging = false;
+});
+
+canvas.addEventListener('touchcancel', () => {
+    isUserDragging = false;
+});
 
 // Initialize
 resizeCanvas();
