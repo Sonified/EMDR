@@ -4,7 +4,7 @@
       { "value": "audio_files/1_Ambient/18 Music From The Sun.mp3", "label": "Music From The Sun" },
       { "value": "audio_files/1_Ambient/18. Synthesized Ocean (Loop).mp3", "label": "Synthesized Ocean" },
       { "value": "audio_files/1_Ambient/Birth of the Evening Star.mp3", "label": "Birth of the Evening Star" },
-      { "_comment": "Endless Now currently too large for playback settings", "value": "audio_files/1_Ambient/Endless Now (v1.0).mp3", "label": "Endless Now", "disabled": true },
+      { "value": "audio_files/1_Ambient/Endless Now (v1.0).mp3", "label": "Endless Now" },
       { "value": "audio_files/1_Ambient/MiND Electric Cello Improv.mp3", "label": "Electric Cello Improv" },
       { "value": "audio_files/1_Ambient/Re_Entry_Music_1.0.mp3", "label": "Re-Entry Music" }
     ],
