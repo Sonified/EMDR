@@ -29,32 +29,32 @@ function getToggleStateText(buttonId, isEnabled) {
 const MUSIC_FREQUENCY_MAP = {
     'Music From The Sun': 65,
     'Imagine With Me (Day Mix)': 97,
-    'Imagine With Me (Night Mix)': 57,
+    'Imagine With Me': 57,
     'Birth of the Evening Star': 56.75,
     'Endless Now': 51,
     'Synthesized Ocean': 40,
-    'Electric Cello Improv': 65.4,
-    'Re-Entry Music': 73.4,
-    'Eternal You': 73.4,
-    'Cello and Children\'s Choir': 92.5,
-    'HARP Promo': 110,
-    'Life in a Moment': 55,
-    'Shepard Rise (UM)': 110,
-    'Shepard\'s Rise (Interlochen)': 98,
-    'Lullaby for the Heart': 49,
-    'Hero\'s Journey': 58.27,
-    'Open Focus': 97,
-    'Mist': 58.27,
-    'Passages': 110,
-    'Speed of Thought': 97,
-    'Dream': 97,
-    'Cyberworld': 110,
-    'Bless Me Now': 73.4,
-    'Frozen Memories (DnB)': 55,
-    'Through the Storm': 48.99,
-    'Sam Brown Rmx': 73.4,
-    'New Year (JuZia)': 130.81,
-    'Total Praise (Remix)': 97,
+    'Electric Cello Improv': 66,
+    'Re_Entry_Music': 66,
+    'Eternal You': 66,
+    'Cello_and_Childrens_Choir': 74,
+    'HARP_Promo_Video_Subtle_Audio_Layers': 74,
+    'Life in a Moment': 66,
+    'Shepard\'s Rise': 48,
+    'Shepards_Rise': 48,
+    'Lullaby for the Heart': 71.5,
+    'Hero\'s Journey': 65,
+    'All Objects Foreground': 87,
+    'Mist': 74,
+    'passages': 75,
+    'Speed of Thought': 68,
+    'Dream': 65,
+    'Cyberworld': 67,
+    'Bless Me Now': 53,
+    'Frozen Memories': 40,
+    'Through the Storm': 67,
+    'Sam Brown Rmx': 50,
+    'New Year': 80,
+    'Total Praise': 49,
     'Holiday': 78
 };
 
@@ -434,10 +434,12 @@ const defaultSettings = {
     ballStyle: 'sphere',
     glowEnabled: false,
     trailStyle: 'ripple',
+    trailAdvanced: false,
     trailLength: 15,
     trailOpacity: 10,
     bgColor: '#03040c',
     audioEnabled: true,
+    masterMuted: false,
     frequency: 110,
     toneVolume: 30,
     tonePanAmount: 100,
@@ -1085,7 +1087,7 @@ function startMusicPlayback() {
         musicSource.start(0, musicPausedAt % musicBuffer.duration);
     }
 
-    // Fade in
+    // Fade in to music volume (master mute is handled by masterGain)
     musicGain.gain.cancelScheduledValues(audioContext.currentTime);
     musicGain.gain.setValueAtTime(musicGain.gain.value, audioContext.currentTime);
     musicGain.gain.linearRampToValueAtTime(settings.musicVolume / 100, audioContext.currentTime + RAMP_DURATION / 1000);
@@ -1801,7 +1803,16 @@ function attachSettingsEventListeners() {
     // Trail advanced checkbox
     const trailAdvancedCheckbox = document.getElementById('trailAdvanced');
     if (trailAdvancedCheckbox) {
+        // Restore checkbox state from settings
+        trailAdvancedCheckbox.checked = settings.trailAdvanced;
+        // Show/hide advanced options based on saved state
+        document.querySelectorAll('.trail-advanced-options').forEach(el => {
+            el.classList.toggle('hidden', !settings.trailAdvanced);
+        });
+
+        // Save state when changed
         trailAdvancedCheckbox.addEventListener('change', (e) => {
+            settings.trailAdvanced = e.target.checked;
             document.querySelectorAll('.trail-advanced-options').forEach(el => {
                 el.classList.toggle('hidden', !e.target.checked);
             });
@@ -1888,7 +1899,6 @@ function attachSettingsEventListeners() {
             el.classList.toggle('hidden', !newState);
         });
 
-        audioBtn.textContent = newState ? '🔊' : '🔇';
         if (newState) {
             initAudio();
             if (audioContext && audioContext.state === 'suspended') {
@@ -2221,7 +2231,7 @@ function attachSettingsEventListeners() {
     }
 
     // Update audio button icon
-    audioBtn.textContent = settings.audioEnabled ? '🔊' : '🔇';
+    audioBtn.textContent = settings.masterMuted ? '🔇' : '🔊';
 
     updateFavicon(settings.ballColor);
 }
@@ -2289,36 +2299,27 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
-// Audio button
+// Audio button - Master Output Mute
 function toggleAudio() {
-    settings.audioEnabled = !settings.audioEnabled;
-    audioEnabledInput.dataset.checked = settings.audioEnabled.toString();
-    audioEnabledInput.querySelector('.toggle-state').textContent = getToggleStateText('audioEnabled', settings.audioEnabled);
-    audioBtn.textContent = settings.audioEnabled ? '🔊' : '🔇';
+    settings.masterMuted = !settings.masterMuted;
+    audioBtn.textContent = settings.masterMuted ? '🔇' : '🔊';
 
-    if (settings.audioEnabled) {
-        initAudio();
-        if (audioContext && audioContext.state === 'suspended') {
-            audioContext.resume();
-        }
-        startAudioLoop();
-        // Resume music if it was playing (fade-in handled in startMusicPlayback)
-        if (musicBuffer && !musicIsPlaying && audioContext) {
-            startMusicPlayback();
-        }
-    } else {
-        // Gentle fade out - let playback rate slowdown do most of the work
-        if (audioContext && musicIsPlaying && musicGain) {
-            musicGain.gain.setValueAtTime(musicGain.gain.value, audioContext.currentTime);
-            musicGain.gain.linearRampToValueAtTime(0, audioContext.currentTime + 1.2);
-            setTimeout(() => {
-                if (!settings.audioEnabled) {
-                    stopMusicPlayback();
-                }
-            }, 1300);
-        }
+    if (!audioContext || !masterGain) {
+        // Audio not initialized yet, just update the button
+        return;
     }
-    updateAudio();
+
+    if (settings.masterMuted) {
+        // Fade out master gain
+        masterGain.gain.cancelScheduledValues(audioContext.currentTime);
+        masterGain.gain.setValueAtTime(masterGain.gain.value, audioContext.currentTime);
+        masterGain.gain.linearRampToValueAtTime(0, audioContext.currentTime + RAMP_DURATION / 1000);
+    } else {
+        // Fade in master gain
+        masterGain.gain.cancelScheduledValues(audioContext.currentTime);
+        masterGain.gain.setValueAtTime(masterGain.gain.value, audioContext.currentTime);
+        masterGain.gain.linearRampToValueAtTime(1, audioContext.currentTime + RAMP_DURATION / 1000);
+    }
 }
 audioBtn.addEventListener('click', () => {
     toggleAudio();

@@ -74,7 +74,7 @@
     { "type": "range", "id": "waveSourceSize", "label": "Source Size", "min": 0, "max": 20, "step": 0.1, "value": 6.5, "showValue": true, "suffix": "%", "className": "trail-advanced-options hidden" },
     { "type": "range", "id": "simSteps", "label": "Sim Steps", "min": 1, "max": 16, "step": 1, "value": 4, "showValue": true, "className": "trail-advanced-options hidden" },
     { "type": "range", "id": "waveSpeed", "label": "Wave Speed", "min": 0.01, "max": 0.49, "step": 0.01, "value": 0.49, "showValue": true, "className": "trail-advanced-options hidden" },
-    { "type": "range", "id": "waveDamping", "label": "Wave Damping", "min": 0.9, "max": 0.999, "step": 0.001, "value": 0.996, "showValue": true, "className": "trail-advanced-options hidden" },
+    { "type": "range", "id": "waveDamping", "label": "Wave Damping", "min": 0.960, "max": 0.999, "step": 0.001, "value": 0.996, "showValue": true, "className": "trail-advanced-options hidden" },
     { "type": "range", "id": "waveForce", "label": "Wave Force", "min": 0.05, "max": 1, "step": 0.01, "value": 0.30, "showValue": true, "className": "trail-advanced-options hidden" },
     { "type": "range", "id": "edgeReflect", "label": "Edge Reflect", "min": 0, "max": 100, "step": 5, "value": 10, "showValue": true, "suffix": "%", "className": "trail-advanced-options hidden" },
     { "type": "range", "id": "edgeBoundary", "label": "Edge Boundary", "min": 0, "max": 15, "step": 0.1, "value": 1.0, "showValue": true, "suffix": "%", "className": "trail-advanced-options hidden" },
