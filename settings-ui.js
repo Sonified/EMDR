@@ -4,20 +4,46 @@
 let settingsConfig = null;
 let musicTracks = null;
 
+function getToggleStateText(buttonId, isEnabled) {
+    if (buttonId === 'audioEnabled') {
+        return isEnabled ? 'Active' : 'Disabled';
+    }
+    if (buttonId === 'reverbEnabled') {
+        return isEnabled ? 'Enabled' : 'Disabled';
+    }
+    return isEnabled ? 'On' : 'Off';
+}
+
 function generateSettingsHTML() {
     if (!settingsConfig || !musicTracks) return '<h2>Loading...</h2>';
 
     let html = '<h2>Settings</h2>';
+    let inSection = false;
 
     for (const setting of settingsConfig) {
         const className = setting.className || '';
 
+        // Close previous section and start new one when we hit a header
+        if (setting.type === 'header') {
+            if (inSection) {
+                html += '</div>'; // Close previous section
+            }
+            html += '<div class="setting-section">'; // Start new section
+            inSection = true;
+        }
+
         switch (setting.type) {
             case 'number':
                 const numStep = setting.step ? `step="${setting.step}"` : '';
+                // Parse label to style units in parentheses
+                let labelHtml = setting.label;
+                const unitMatch = setting.label.match(/^(.+?)(\s*\([^)]+\))$/);
+                if (unitMatch) {
+                    labelHtml = `${unitMatch[1]}<span class="label-unit">${unitMatch[2]}</span>`;
+                }
                 html += `
                     <div class="setting-group ${className}">
-                        <label for="${setting.id}">${setting.label}</label>
+                        <label for="${setting.id}">${labelHtml}</label>
                         <input type="number" id="${setting.id}" min="${setting.min}" max="${setting.max}" ${numStep} value="${setting.value}">
                     </div>`;
                 break;
@@ -61,6 +87,24 @@ function generateSettingsHTML() {
                     </div>`;
                 break;
 
+            case 'toggle':
+                const toggleState = getToggleStateText(setting.id, setting.checked);
+                const labelText = setting.label ? `${setting.label}: ` : '';
+                html += `
+                    <div class="setting-group ${className}">
+                        <button type="button" class="toggle-btn" id="${setting.id}" data-checked="${setting.checked ? 'true' : 'false'}">
+                            ${labelText}<span class="toggle-state">${toggleState}</span>
+                        </button>
+                    </div>`;
+                break;
+
+            case 'header':
+                html += `
+                    <div class="setting-header ${className}">
+                        <h3>${setting.label}</h3>
+                    </div>`;
+                break;
+
             case 'color':
                 html += `
                     <div class="setting-group ${className}">
@@ -88,13 +132,19 @@ function generateSettingsHTML() {
                     }
                     musicHtml += '</optgroup>';
                 }
+                const musicLabel = setting.label ? `<label for="${setting.id}">${setting.label}</label>` : '';
                 html += `
                     <div class="setting-group ${className}">
-                        <label for="${setting.id}">${setting.label}</label>
+                        ${musicLabel}
                         <select id="${setting.id}">${musicHtml}</select>
                     </div>`;
                 break;
         }
+    }
+
+    // Close the final section
+    if (inSection) {
+        html += '</div>';
     }
 
     return html;

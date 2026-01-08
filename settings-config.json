@@ -1,55 +1,62 @@
 {
   "musicTracks": {
-    "Alexander": [
-      { "value": "audio_files/Alexander - Imagine With Me (Day Mix).mp3", "label": "Imagine With Me (Day Mix)" },
-      { "value": "audio_files/Alexander - Imagine With Me (Night Mix).mp3", "label": "Imagine With Me (Night Mix)" },
-      { "value": "audio_files/Alexander - All Objects Foreground.mp3", "label": "All Objects Foreground" },
-      { "value": "audio_files/Alexander - Bless Me Now (v2.1).mp3", "label": "Bless Me Now" },
-      { "value": "audio_files/Alexander - Eternal You.mp3", "label": "Eternal You" },
-      { "value": "audio_files/Alexander - Holiday (Preview).mp3", "label": "Holiday (Preview)" }
+    "Ambient": [
+      { "value": "audio_files/1_Ambient/18 Music From The Sun.mp3", "label": "Music From The Sun" },
+      { "value": "audio_files/1_Ambient/18. Synthesized Ocean (Loop).mp3", "label": "Synthesized Ocean" },
+      { "value": "audio_files/1_Ambient/Birth of the Evening Star.mp3", "label": "Birth of the Evening Star" },
+      { "value": "audio_files/1_Ambient/Endless Now (v1.0).mp3", "label": "Endless Now" },
+      { "value": "audio_files/1_Ambient/MiND Electric Cello Improv.mp3", "label": "Electric Cello Improv" },
+      { "value": "audio_files/1_Ambient/Re_Entry_Music_1.0.mp3", "label": "Re-Entry Music" }
     ],
-    "Audio Revolution": [
-      { "value": "audio_files/AR - 1 - Speed of Thought.mp3", "label": "Speed of Thought" },
-      { "value": "audio_files/AR - 2 - Dream.mp3", "label": "Dream" },
-      { "value": "audio_files/AR - 3 - Cyberworld.mp3", "label": "Cyberworld" }
+    "Acoustic": [
+      { "value": "audio_files/2_Acoustic/Alexander - Eternal You.mp3", "label": "Eternal You" },
+      { "value": "audio_files/2_Acoustic/Cello_and_Childrens_Choir_Fun_1.9.mp3", "label": "Cello and Children's Choir" },
+      { "value": "audio_files/2_Acoustic/HARP_Promo_Video_Subtle_Audio_Layers.mp3", "label": "HARP Promo (Subtle Layers)" },
+      { "value": "audio_files/2_Acoustic/Life in a Moment.mp3", "label": "Life in a Moment" },
+      { "value": "audio_files/2_Acoustic/Shepard's Rise.mp3", "label": "Shepard Rise (UM)" },
+      { "value": "audio_files/2_Acoustic/Shepards_Rise_Interlochen.mp3", "label": "Shepard's Rise (Interlochen)" }
     ],
-    "Lucid Dreamscapes": [
-      { "value": "audio_files/LD - 1 - Through the Storm.mp3", "label": "Through the Storm" },
-      { "value": "audio_files/LD - 3 - Sam Brown Rmx.mp3", "label": "Sam Brown Rmx" }
+    "Paced Breathing": [
+      { "value": "audio_files/3_Paced_Breathing/Lullaby for the Heart.mp3", "label": "Lullaby for the Heart" },
+      { "value": "audio_files/3_Paced_Breathing/Hero's Journey.mp3", "label": "Hero's Journey" }
     ],
-    "Other Tracks": [
-      { "value": "audio_files/1. Mist.mp3", "label": "Mist" },
-      { "value": "audio_files/10. passages.mp3", "label": "Passages" },
-      { "value": "audio_files/18 Music From The Sun.mp3", "label": "Music From The Sun" },
-      { "value": "audio_files/18. Synthesized Ocean (Loop).mp3", "label": "Synthesized Ocean" },
-      { "value": "audio_files/Birth of the Evening Star.mp3", "label": "Birth of the Evening Star" },
-      { "value": "audio_files/Cello_and_Childrens_Choir_Fun_1.9.mp3", "label": "Cello and Children's Choir" },
-      { "value": "audio_files/Endless Now (v1.0).mp3", "label": "Endless Now" },
-      { "value": "audio_files/Frozen Memories (DnB demo).mp3", "label": "Frozen Memories (DnB)" },
-      { "value": "audio_files/HARP_Promo_Video_Subtle_Audio_Layers.mp3", "label": "HARP Promo (Subtle Layers)" },
-      { "value": "audio_files/Life in a Moment.mp3", "label": "Life in a Moment" },
-      { "value": "audio_files/MiND Electric Cello Improv.mp3", "label": "Electric Cello Improv" },
-      { "value": "audio_files/New Year (JuZia Feat. Mr. Bling)(320mp3).mp3", "label": "New Year (JuZia)" },
-      { "value": "audio_files/Re_Entry_Music_1.0.mp3", "label": "Re-Entry Music" },
-      { "value": "audio_files/Shepard's Rise.mp3", "label": "Shepard's Rise" },
-      { "value": "audio_files/Shepards_Rise_Interlochen.mp3", "label": "Shepard's Rise (Interlochen)" },
-      { "value": "audio_files/Total Praise (Remix).mp3", "label": "Total Praise (Remix)" }
+    "Electronic": [
+      { "value": "audio_files/4_Electronic/Alexander - Imagine With Me (Day Mix).mp3", "label": "Imagine With Me (Day Mix)" },
+      { "value": "audio_files/4_Electronic/Alexander - Imagine With Me (Night Mix).mp3", "label": "Imagine With Me (Night Mix)" },
+      { "value": "audio_files/4_Electronic/Alexander - All Objects Foreground.mp3", "label": "Open Focus" },
+      { "value": "audio_files/4_Electronic/1. Mist.mp3", "label": "Mist" },
+      { "value": "audio_files/4_Electronic/10. passages.mp3", "label": "Passages" },
+      { "value": "audio_files/4_Electronic/AR - 1 - Speed of Thought.mp3", "label": "Speed of Thought" },
+      { "value": "audio_files/4_Electronic/AR - 2 - Dream.mp3", "label": "Dream" },
+      { "value": "audio_files/4_Electronic/AR - 3 - Cyberworld.mp3", "label": "Cyberworld" },
+      { "value": "audio_files/4_Electronic/Alexander - Bless Me Now (v2.1).mp3", "label": "Bless Me Now" },
+      { "value": "audio_files/4_Electronic/Frozen Memories (DnB demo).mp3", "label": "Frozen Memories (DnB)" },
+      { "value": "audio_files/4_Electronic/LD - 1 - Through the Storm.mp3", "label": "Through the Storm" },
+      { "value": "audio_files/4_Electronic/LD - 3 - Sam Brown Rmx.mp3", "label": "Sam Brown Rmx" },
+      { "value": "audio_files/4_Electronic/New Year (JuZia Feat. Mr. Bling)(320mp3).mp3", "label": "New Year (JuZia)" },
+      { "value": "audio_files/4_Electronic/Total Praise (Remix).mp3", "label": "Total Praise (Remix)" }
+    ],
+    "Other": [
+      { "value": "audio_files/5_Other/Alexander - Holiday (Preview).mp3", "label": "Holiday (Preview)" }
     ]
   },
   "settings": [
+    { "type": "header", "label": "Motion" },
     { "type": "number", "id": "speed", "label": "Speed (cycles/min)", "min": 1, "max": 120, "value": 40 },
-    { "type": "select", "id": "motionType", "label": "Motion", "options": [
+    { "type": "select", "id": "motionType", "label": "Pattern", "options": [
       { "value": "sine", "label": "Sine (ease at edges)" },
       { "value": "linear", "label": "Linear (constant speed)" }
     ]},
-    { "type": "range", "id": "ballSize", "label": "Ball Size", "min": 10, "max": 100, "value": 10, "showValue": true },
-    { "type": "color", "id": "ballColor", "label": "Ball Color", "value": "#5661fa" },
-    { "type": "color", "id": "bgColor", "label": "Background Color", "value": "#03040c" },
-    { "type": "select", "id": "ballStyle", "label": "Ball Style", "options": [
+    { "type": "header", "label": "Color" },
+    { "type": "color", "id": "ballColor", "label": "Ball", "value": "#5661fa" },
+    { "type": "color", "id": "bgColor", "label": "Background", "value": "#03040c" },
+    { "type": "header", "label": "Ball" },
+    { "type": "range", "id": "ballSize", "label": "Size", "min": 10, "max": 100, "value": 25, "showValue": true },
+    { "type": "select", "id": "ballStyle", "label": "Style", "options": [
       { "value": "flat", "label": "Flat" },
       { "value": "sphere", "label": "Sphere (3D)", "selected": true }
     ]},
-    { "type": "checkbox", "id": "glowEnabled", "label": "Glow Effect", "checked": false },
+    { "type": "toggle", "id": "glowEnabled", "label": "Glow", "checked": false },
     { "type": "select", "id": "trailStyle", "label": "Trail Effect", "options": [
       { "value": "none", "label": "None" },
       { "value": "basic", "label": "Basic" },
@@ -57,29 +64,33 @@
       { "value": "fluid", "label": "Fluid" },
       { "value": "ripple", "label": "Ripple Waves", "selected": true }
     ]},
-    { "type": "range", "id": "trailLength", "label": "Trail Length", "min": 5, "max": 50, "value": 15, "showValue": true, "className": "trail-options hidden" },
-    { "type": "select", "id": "waveGridSize", "label": "Grid Size", "className": "ripple-options hidden", "options": [
+    { "type": "checkbox", "id": "trailAdvanced", "label": "Advanced", "checked": false, "className": "trail-show" },
+    { "type": "range", "id": "trailLength", "label": "Trail Length", "min": 5, "max": 50, "value": 15, "showValue": true, "className": "trail-advanced-options hidden" },
+    { "type": "select", "id": "waveGridSize", "label": "Grid Size", "className": "trail-advanced-options hidden", "options": [
       { "value": "256", "label": "256 (Fast)" },
       { "value": "512", "label": "512 (Medium)" },
       { "value": "1024", "label": "1024 (High Detail)", "selected": true }
     ]},
-    { "type": "range", "id": "waveSourceSize", "label": "Source Size", "min": 0, "max": 20, "step": 0.1, "value": 6.5, "showValue": true, "suffix": "%", "className": "ripple-options hidden" },
-    { "type": "range", "id": "simSteps", "label": "Sim Steps", "min": 1, "max": 16, "step": 1, "value": 4, "showValue": true, "className": "ripple-options hidden" },
-    { "type": "range", "id": "waveSpeed", "label": "Wave Speed", "min": 0.01, "max": 0.49, "step": 0.01, "value": 0.49, "showValue": true, "className": "ripple-options hidden" },
-    { "type": "range", "id": "waveDamping", "label": "Wave Damping", "min": 0.9, "max": 0.999, "step": 0.001, "value": 0.996, "showValue": true, "className": "ripple-options hidden" },
-    { "type": "range", "id": "waveForce", "label": "Wave Force", "min": 0.05, "max": 1, "step": 0.01, "value": 0.30, "showValue": true, "className": "ripple-options hidden" },
-    { "type": "range", "id": "edgeReflect", "label": "Edge Reflect", "min": 0, "max": 100, "step": 5, "value": 10, "showValue": true, "suffix": "%", "className": "ripple-options hidden" },
-    { "type": "range", "id": "edgeBoundary", "label": "Edge Boundary", "min": 0, "max": 15, "step": 0.1, "value": 1.0, "showValue": true, "suffix": "%", "className": "ripple-options hidden" },
-    { "type": "range", "id": "trailOpacity", "label": "Trail Opacity", "min": 10, "max": 100, "value": 15, "showValue": true, "suffix": "%", "className": "trail-options hidden" },
-    { "type": "music", "id": "musicSelect", "label": "Music" },
+    { "type": "range", "id": "waveSourceSize", "label": "Source Size", "min": 0, "max": 20, "step": 0.1, "value": 6.5, "showValue": true, "suffix": "%", "className": "trail-advanced-options hidden" },
+    { "type": "range", "id": "simSteps", "label": "Sim Steps", "min": 1, "max": 16, "step": 1, "value": 4, "showValue": true, "className": "trail-advanced-options hidden" },
+    { "type": "range", "id": "waveSpeed", "label": "Wave Speed", "min": 0.01, "max": 0.49, "step": 0.01, "value": 0.49, "showValue": true, "className": "trail-advanced-options hidden" },
+    { "type": "range", "id": "waveDamping", "label": "Wave Damping", "min": 0.9, "max": 0.999, "step": 0.001, "value": 0.996, "showValue": true, "className": "trail-advanced-options hidden" },
+    { "type": "range", "id": "waveForce", "label": "Wave Force", "min": 0.05, "max": 1, "step": 0.01, "value": 0.30, "showValue": true, "className": "trail-advanced-options hidden" },
+    { "type": "range", "id": "edgeReflect", "label": "Edge Reflect", "min": 0, "max": 100, "step": 5, "value": 10, "showValue": true, "suffix": "%", "className": "trail-advanced-options hidden" },
+    { "type": "range", "id": "edgeBoundary", "label": "Edge Boundary", "min": 0, "max": 15, "step": 0.1, "value": 1.0, "showValue": true, "suffix": "%", "className": "trail-advanced-options hidden" },
+    { "type": "range", "id": "trailOpacity", "label": "Trail Opacity", "min": 0, "max": 100, "value": 10, "showValue": true, "suffix": "%", "className": "trail-advanced-options hidden" },
+    { "type": "header", "label": "Music" },
+    { "type": "music", "id": "musicSelect" },
     { "type": "range", "id": "musicVolume", "label": "Music Volume", "min": 0, "max": 100, "value": 50, "showValue": true, "suffix": "%", "className": "music-volume-control hidden" },
     { "type": "range", "id": "musicPan", "label": "Music Pan", "min": 0, "max": 100, "value": 80, "showValue": true, "suffix": "%", "className": "music-volume-control hidden" },
-    { "type": "checkbox", "id": "audioEnabled", "label": "Enable Panning Tone", "checked": true },
+    { "type": "header", "label": "Sustained Tone" },
+    { "type": "toggle", "id": "audioEnabled", "label": "", "checked": true },
     { "type": "number", "id": "frequency", "label": "Frequency (Hz)", "min": 20, "max": 2000, "step": 0.1, "value": 110, "className": "tone-options" },
     { "type": "range", "id": "frequencySlider", "label": "Freq Slider", "min": 20, "max": 220, "step": 1, "value": 97, "className": "tone-options", "hideLabel": true },
     { "type": "range", "id": "toneVolume", "label": "Tone Volume", "min": 0, "max": 100, "value": 30, "showValue": true, "suffix": "%", "className": "tone-options" },
-    { "type": "range", "id": "tonePan", "label": "Tone Pan", "min": 0, "max": 100, "value": 100, "showValue": true, "suffix": "%", "className": "tone-options" },
-    { "type": "checkbox", "id": "reverbEnabled", "label": "Enable Reverb", "checked": false },
+    { "type": "range", "id": "tonePan", "label": "Tone Pan Width", "min": 0, "max": 100, "value": 100, "showValue": true, "suffix": "%", "className": "tone-options" },
+    { "type": "header", "label": "Reverb" },
+    { "type": "toggle", "id": "reverbEnabled", "label": "", "checked": false },
     { "type": "select", "id": "reverbType", "label": "Reverb Type", "className": "reverb-options hidden", "options": [
       { "value": "room", "label": "Room" },
       { "value": "hall", "label": "Hall" },
@@ -87,6 +98,6 @@
       { "value": "cathedral", "label": "Cathedral" }
     ]},
     { "type": "range", "id": "reverbMix", "label": "Reverb Mix", "min": 0, "max": 100, "value": 15, "showValue": true, "suffix": "%", "className": "reverb-options hidden" },
-    { "type": "range", "id": "reverbDecay", "label": "Decay Time", "min": 0.5, "max": 6, "step": 0.1, "value": 2.0, "showValue": true, "suffix": "s", "className": "reverb-options hidden" }
+    { "type": "range", "id": "reverbDecay", "label": "Decay Time", "min": 0.1, "max": 6, "step": 0.1, "value": 2.0, "showValue": true, "suffix": "s", "className": "reverb-options hidden" }
   ]
 }

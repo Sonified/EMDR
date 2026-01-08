@@ -14,6 +14,17 @@ function freqToSlider(freq) {
     return Math.max(FREQ_MIN, Math.min(FREQ_MAX, Math.round(freq)));
 }
 
+// Get toggle button state text based on button ID
+function getToggleStateText(buttonId, isEnabled) {
+    if (buttonId === 'audioEnabled') {
+        return isEnabled ? 'Active' : 'Disabled';
+    }
+    if (buttonId === 'reverbEnabled') {
+        return isEnabled ? 'Enabled' : 'Disabled';
+    }
+    return isEnabled ? 'On' : 'Off';
+}
+
 // Dynamic favicon
 function updateFavicon(color) {
     const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
@@ -1429,6 +1440,9 @@ function togglePlayPause() {
     isPlaying = !isPlaying;
     playPauseBtn.textContent = isPlaying ? '❚❚' : '▶';
 
+    // Remove pulse animation on first interaction
+    playPauseBtn.classList.remove('pulse');
+
     // Hide start overlay on first play
     if (isPlaying && startOverlay) {
         startOverlay.style.display = 'none';
@@ -1655,22 +1669,31 @@ function attachSettingsEventListeners() {
         settings.ballStyle = e.target.value;
     });
 
-    // Glow
-    glowEnabledInput.addEventListener('change', (e) => {
-        settings.glowEnabled = e.target.checked;
+    // Glow (toggle button)
+    glowEnabledInput.addEventListener('click', (e) => {
+        const button = e.currentTarget;
+        const isChecked = button.dataset.checked === 'true';
+        const newState = !isChecked;
+        settings.glowEnabled = newState;
+        button.dataset.checked = newState.toString();
+        button.querySelector('.toggle-state').textContent = newState ? 'On' : 'Off';
+        button.blur(); // Remove focus so spacebar can trigger play/pause
     });
 
     // Trail style
     trailStyleSelect.addEventListener('change', (e) => {
         settings.trailStyle = e.target.value;
-        // Show trail options for non-ripple trail effects
-        document.querySelectorAll('.trail-options').forEach(el => {
-            el.classList.toggle('hidden', e.target.value === 'none' || e.target.value === 'ripple');
+        // Show/hide the advanced checkbox (only show when a trail effect is active)
+        document.querySelectorAll('.trail-show').forEach(el => {
+            el.classList.toggle('hidden', e.target.value === 'none');
         });
-        // Show ripple options only for ripple effect
-        document.querySelectorAll('.ripple-options').forEach(el => {
-            el.classList.toggle('hidden', e.target.value !== 'ripple');
-        });
+        // Hide advanced options when switching trail types (user needs to re-enable)
+        const advancedCheckbox = document.getElementById('trailAdvanced');
+        if (advancedCheckbox && !advancedCheckbox.checked) {
+            document.querySelectorAll('.trail-advanced-options').forEach(el => {
+                el.classList.add('hidden');
+            });
+        }
         // Initialize Three.js when fluid is selected
         if (e.target.value === 'fluid') {
             initThreeJS();
@@ -1681,6 +1704,16 @@ function attachSettingsEventListeners() {
         }
     });
 
+    // Trail advanced checkbox
+    const trailAdvancedCheckbox = document.getElementById('trailAdvanced');
+    if (trailAdvancedCheckbox) {
+        trailAdvancedCheckbox.addEventListener('change', (e) => {
+            document.querySelectorAll('.trail-advanced-options').forEach(el => {
+                el.classList.toggle('hidden', !e.target.checked);
+            });
+        });
+    }
+
     // Trail length
     document.getElementById('trailLength').addEventListener('input', (e) => {
         settings.trailLength = parseInt(e.target.value) || 15;
@@ -1689,7 +1722,7 @@ function attachSettingsEventListeners() {
 
     // Trail opacity
     document.getElementById('trailOpacity').addEventListener('input', (e) => {
-        settings.trailOpacity = parseInt(e.target.value) || 15;
+        settings.trailOpacity = parseInt(e.target.value);
         document.getElementById('trailOpacityValue').textContent = settings.trailOpacity;
     });
 
@@ -1746,11 +1779,23 @@ function attachSettingsEventListeners() {
         resizeWaveGrid();
     });
 
-    // Audio enabled checkbox (controls panning tone only, not the audio loop)
-    audioEnabledInput.addEventListener('change', (e) => {
-        settings.audioEnabled = e.target.checked;
-        audioBtn.textContent = settings.audioEnabled ? '🔊' : '🔇';
-        if (settings.audioEnabled) {
+    // Sustained Tone toggle (controls panning tone only, not the audio loop)
+    audioEnabledInput.addEventListener('click', (e) => {
+        const button = e.currentTarget;
+        const isChecked = button.dataset.checked === 'true';
+        const newState = !isChecked;
+        settings.audioEnabled = newState;
+        button.dataset.checked = newState.toString();
+        button.querySelector('.toggle-state').textContent = getToggleStateText('audioEnabled', newState);
+        button.blur(); // Remove focus so spacebar can trigger play/pause
+
+        // Show/hide tone options
+        document.querySelectorAll('.tone-options').forEach(el => {
+            el.classList.toggle('hidden', !newState);
+        });
+
+        audioBtn.textContent = newState ? '🔊' : '🔇';
+        if (newState) {
             initAudio();
             if (audioContext && audioContext.state === 'suspended') {
                 audioContext.resume();
@@ -1803,11 +1848,136 @@ function attachSettingsEventListeners() {
             settings.frequency = 65;
             frequencyInput.value = 65;
             freqSlider.value = freqToSlider(65);
+        } else if (src.includes('Imagine With Me (Day Mix)')) {
+            settings.frequency = 57;
+            frequencyInput.value = 57;
+            freqSlider.value = freqToSlider(57);
         } else if (src.includes('Imagine With Me')) {
             settings.frequency = 97;
             frequencyInput.value = 97;
             freqSlider.value = freqToSlider(97);
+        } else if (src.includes('Birth of the Evening Star')) {
+            settings.frequency = 56.75;
+            settings.audioEnabled = true;
+            frequencyInput.value = 56.75;
+            freqSlider.value = freqToSlider(56.75);
+            audioEnabledInput.dataset.checked = 'true';
+            audioEnabledInput.querySelector('.toggle-state').textContent = getToggleStateText('audioEnabled', true);
+            audioBtn.textContent = '🔊';
+        } else if (src.includes('Endless Now')) {
+            settings.frequency = 51;
+            frequencyInput.value = 51;
+            freqSlider.value = freqToSlider(51);
+        } else if (src.includes('Synthesized Ocean')) {
+            settings.frequency = 40;
+            frequencyInput.value = 40;
+            freqSlider.value = freqToSlider(40);
+        } else if (src.includes('Electric Cello Improv')) {
+            settings.frequency = 66;
+            frequencyInput.value = 66;
+            freqSlider.value = freqToSlider(66);
+        } else if (src.includes('Re_Entry_Music')) {
+            settings.frequency = 66;
+            frequencyInput.value = 66;
+            freqSlider.value = freqToSlider(66);
+        } else if (src.includes('Eternal You')) {
+            settings.frequency = 66;
+            frequencyInput.value = 66;
+            freqSlider.value = freqToSlider(66);
+        } else if (src.includes('Cello_and_Childrens_Choir')) {
+            settings.frequency = 74;
+            frequencyInput.value = 74;
+            freqSlider.value = freqToSlider(74);
+        } else if (src.includes('HARP_Promo_Video_Subtle_Audio_Layers')) {
+            settings.frequency = 74;
+            frequencyInput.value = 74;
+            freqSlider.value = freqToSlider(74);
+        } else if (src.includes('Life in a Moment')) {
+            settings.frequency = 66;
+            frequencyInput.value = 66;
+            freqSlider.value = freqToSlider(66);
+        } else if (src.includes("Shepard's Rise") || src.includes("Shepards_Rise")) {
+            settings.frequency = 48;
+            frequencyInput.value = 48;
+            freqSlider.value = freqToSlider(48);
+        } else if (src.includes('Bless Me Now')) {
+            settings.frequency = 53;
+            frequencyInput.value = 53;
+            freqSlider.value = freqToSlider(53);
+        } else if (src.includes('All Objects Foreground')) {
+            settings.frequency = 87;
+            frequencyInput.value = 87;
+            freqSlider.value = freqToSlider(87);
+        } else if (src.includes('Mist')) {
+            settings.frequency = 74;
+            frequencyInput.value = 74;
+            freqSlider.value = freqToSlider(74);
+        } else if (src.includes('passages')) {
+            settings.frequency = 75;
+            frequencyInput.value = 75;
+            freqSlider.value = freqToSlider(75);
+        } else if (src.includes('Speed of Thought')) {
+            settings.frequency = 68;
+            frequencyInput.value = 68;
+            freqSlider.value = freqToSlider(68);
+        } else if (src.includes('Dream')) {
+            settings.frequency = 65;
+            frequencyInput.value = 65;
+            freqSlider.value = freqToSlider(65);
+        } else if (src.includes('Cyberworld')) {
+            settings.frequency = 67;
+            frequencyInput.value = 67;
+            freqSlider.value = freqToSlider(67);
+        } else if (src.includes("Hero's Journey")) {
+            settings.frequency = 65;
+            frequencyInput.value = 65;
+            freqSlider.value = freqToSlider(65);
+        } else if (src.includes('Lullaby for the Heart')) {
+            settings.frequency = 71.5;
+            frequencyInput.value = 71.5;
+            freqSlider.value = freqToSlider(71.5);
+        } else if (src.includes('Frozen Memories')) {
+            settings.frequency = 40;
+            frequencyInput.value = 40;
+            freqSlider.value = freqToSlider(40);
+        } else if (src.includes('Through the Storm')) {
+            settings.frequency = 68;
+            frequencyInput.value = 68;
+            freqSlider.value = freqToSlider(68);
+        } else if (src.includes('Sam Brown Rmx')) {
+            settings.frequency = 50;
+            frequencyInput.value = 50;
+            freqSlider.value = freqToSlider(50);
+        } else if (src.includes('New Year')) {
+            settings.frequency = 80;
+            frequencyInput.value = 80;
+            freqSlider.value = freqToSlider(80);
+        } else if (src.includes('Total Praise')) {
+            settings.frequency = 49;
+            frequencyInput.value = 49;
+            freqSlider.value = freqToSlider(49);
+        } else if (src.includes('Holiday')) {
+            settings.frequency = 78;
+            frequencyInput.value = 78;
+            freqSlider.value = freqToSlider(78);
         }
+
+        // Update music picker label
+        const tracks = musicPickerDropdown.querySelectorAll('.track');
+        let selectedLabel = 'None';
+        tracks.forEach(track => {
+            if (track.dataset.value === src) {
+                selectedLabel = track.dataset.label;
+                track.classList.add('selected');
+            } else {
+                track.classList.remove('selected');
+            }
+        });
+        selectedMusicValue = src;
+        musicPickerLabel.textContent = src ? `Music: ${selectedLabel}` : 'Music: None';
+
+        // Save selected track to localStorage
+        localStorage.setItem('emdr_selectedMusic', src);
 
         // Stop and disconnect existing audio
         stopMusicPlayback();
@@ -1891,14 +2061,21 @@ function attachSettingsEventListeners() {
         document.getElementById('musicPanValue').textContent = settings.musicPanAmount;
     });
 
-    // Reverb controls
-    document.getElementById('reverbEnabled').addEventListener('change', (e) => {
-        settings.reverbEnabled = e.target.checked;
+    // Reverb controls (toggle button)
+    document.getElementById('reverbEnabled').addEventListener('click', (e) => {
+        const button = e.currentTarget;
+        const isChecked = button.dataset.checked === 'true';
+        const newState = !isChecked;
+        settings.reverbEnabled = newState;
+        button.dataset.checked = newState.toString();
+        button.querySelector('.toggle-state').textContent = newState ? 'On' : 'Off';
+        button.blur(); // Remove focus so spacebar can trigger play/pause
+
         document.querySelectorAll('.reverb-options').forEach(el => {
-            el.classList.toggle('hidden', !settings.reverbEnabled);
+            el.classList.toggle('hidden', !newState);
         });
 
-        if (settings.reverbEnabled) {
+        if (newState) {
             // Initialize audio context if needed
             initAudioContext();
             updateReverbMix();
@@ -1969,7 +2146,8 @@ function attachSettingsEventListeners() {
     document.getElementById('ballColorHex').value = settings.ballColor;
     document.getElementById('bgColorHex').value = settings.bgColor;
     ballStyleSelect.value = settings.ballStyle;
-    glowEnabledInput.checked = settings.glowEnabled;
+    glowEnabledInput.dataset.checked = settings.glowEnabled.toString();
+    glowEnabledInput.querySelector('.toggle-state').textContent = settings.glowEnabled ? 'On' : 'Off';
     trailStyleSelect.value = settings.trailStyle;
 
     // Trail options
@@ -1996,7 +2174,8 @@ function attachSettingsEventListeners() {
     document.getElementById('waveGridSize').value = settings.waveGridSize;
 
     // Audio options
-    audioEnabledInput.checked = settings.audioEnabled;
+    audioEnabledInput.dataset.checked = settings.audioEnabled.toString();
+    audioEnabledInput.querySelector('.toggle-state').textContent = getToggleStateText('audioEnabled', settings.audioEnabled);
     frequencyInput.value = settings.frequency;
     // Sync frequency slider (logarithmic)
     if (settings.frequency <= FREQ_MAX) {
@@ -2014,7 +2193,9 @@ function attachSettingsEventListeners() {
     document.getElementById('musicVolumeValue').textContent = settings.musicVolume || 50;
 
     // Reverb options
-    document.getElementById('reverbEnabled').checked = settings.reverbEnabled;
+    const reverbEnabledBtn = document.getElementById('reverbEnabled');
+    reverbEnabledBtn.dataset.checked = settings.reverbEnabled.toString();
+    reverbEnabledBtn.querySelector('.toggle-state').textContent = settings.reverbEnabled ? 'On' : 'Off';
     document.getElementById('reverbType').value = settings.reverbType;
     document.getElementById('reverbMix').value = settings.reverbMix;
     document.getElementById('reverbMixValue').textContent = settings.reverbMix;
@@ -2027,6 +2208,9 @@ function attachSettingsEventListeners() {
     });
     document.querySelectorAll('.ripple-options').forEach(el => {
         el.classList.toggle('hidden', settings.trailStyle !== 'ripple');
+    });
+    document.querySelectorAll('.tone-options').forEach(el => {
+        el.classList.toggle('hidden', !settings.audioEnabled);
     });
     document.querySelectorAll('.reverb-options').forEach(el => {
         el.classList.toggle('hidden', !settings.reverbEnabled);
@@ -2120,7 +2304,8 @@ document.addEventListener('keydown', (e) => {
 // Audio button
 function toggleAudio() {
     settings.audioEnabled = !settings.audioEnabled;
-    audioEnabledInput.checked = settings.audioEnabled;
+    audioEnabledInput.dataset.checked = settings.audioEnabled.toString();
+    audioEnabledInput.querySelector('.toggle-state').textContent = getToggleStateText('audioEnabled', settings.audioEnabled);
     audioBtn.textContent = settings.audioEnabled ? '🔊' : '🔇';
 
     if (settings.audioEnabled) {
@@ -2164,34 +2349,59 @@ const musicPickerDropdown = document.getElementById('musicPickerDropdown');
 let selectedMusicValue = '';
 
 // Load music tracks and populate dropdown
-const DEFAULT_TRACK = 'audio_files/Alexander - Imagine With Me (Day Mix).mp3';
+const DEFAULT_TRACK = 'audio_files/4_Electronic/Alexander - Imagine With Me (Day Mix).mp3';
 const DEFAULT_TRACK_LABEL = 'Imagine With Me (Day Mix)';
 
 fetch('settings-config.json')
     .then(r => r.json())
     .then(config => {
         const tracks = config.musicTracks;
-        let html = '<div class="track none-option" data-value="">None</div>';
 
+        // Load saved track from localStorage, or use default
+        const savedTrack = localStorage.getItem('emdr_selectedMusic');
+        const trackToLoad = savedTrack || DEFAULT_TRACK;
+
+        // Build dropdown HTML with correct selection
+        let html = '<div class="track none-option" data-value="">None</div>';
         for (const category in tracks) {
             html += `<div class="category">${category}</div>`;
             for (const track of tracks[category]) {
-                const isDefault = track.value === DEFAULT_TRACK;
-                html += `<div class="track${isDefault ? ' selected' : ''}" data-value="${track.value}">${track.label}</div>`;
+                const isSelected = track.value === trackToLoad;
+                html += `<div class="track${isSelected ? ' selected' : ''}" data-value="${track.value}" data-label="${track.label}">${track.label}</div>`;
             }
         }
         musicPickerDropdown.innerHTML = html;
 
-        // Set default track
-        selectedMusicValue = DEFAULT_TRACK;
-        musicPickerLabel.textContent = `Music: ${DEFAULT_TRACK_LABEL}`;
-        settings.frequency = 97;
-        loadMusicTrack(DEFAULT_TRACK);
+        // Find the label for the track
+        let trackLabel = DEFAULT_TRACK_LABEL;
+        if (savedTrack) {
+            for (const category in tracks) {
+                const found = tracks[category].find(t => t.value === savedTrack);
+                if (found) {
+                    trackLabel = found.label;
+                    break;
+                }
+            }
+        }
+
+        selectedMusicValue = trackToLoad;
+        musicPickerLabel.textContent = trackToLoad ? `Music: ${trackLabel}` : 'Music: None';
+
+        // Set default frequency (will be overridden by change event if track has custom frequency)
+        if (!savedTrack) {
+            settings.frequency = 97;
+        }
+
+        loadMusicTrack(trackToLoad);
 
         // Sync to settings select if it exists
         const musicSelectEl = document.getElementById('musicSelect');
         if (musicSelectEl) {
-            musicSelectEl.value = DEFAULT_TRACK;
+            musicSelectEl.value = trackToLoad;
+            // Trigger change event to set custom frequency for the track
+            if (savedTrack) {
+                musicSelectEl.dispatchEvent(new Event('change'));
+            }
         }
     });
 
@@ -2247,6 +2457,56 @@ function loadMusicTrack(src) {
         settings.frequency = 97;
         if (frequencyInput) frequencyInput.value = 97;
         if (freqSlider) freqSlider.value = freqToSlider(97);
+    } else if (src && src.includes('Birth of the Evening Star')) {
+        settings.frequency = 56.75;
+        settings.audioEnabled = true;
+        if (frequencyInput) frequencyInput.value = 56.75;
+        if (freqSlider) freqSlider.value = freqToSlider(56.75);
+        if (audioEnabledInput) {
+            audioEnabledInput.dataset.checked = 'true';
+            audioEnabledInput.querySelector('.toggle-state').textContent = getToggleStateText('audioEnabled', true);
+        }
+        audioBtn.textContent = '🔊';
+    } else if (src && src.includes('Endless Now')) {
+        settings.frequency = 51;
+        if (frequencyInput) frequencyInput.value = 51;
+        if (freqSlider) freqSlider.value = freqToSlider(51);
+    } else if (src && src.includes('Synthesized Ocean')) {
+        settings.frequency = 40;
+        if (frequencyInput) frequencyInput.value = 40;
+        if (freqSlider) freqSlider.value = freqToSlider(40);
+    } else if (src && src.includes('Electric Cello Improv')) {
+        settings.frequency = 66;
+        if (frequencyInput) frequencyInput.value = 66;
+        if (freqSlider) freqSlider.value = freqToSlider(66);
+    } else if (src && src.includes('Re_Entry_Music')) {
+        settings.frequency = 66;
+        if (frequencyInput) frequencyInput.value = 66;
+        if (freqSlider) freqSlider.value = freqToSlider(66);
+    } else if (src && src.includes('Eternal You')) {
+        settings.frequency = 66;
+        if (frequencyInput) frequencyInput.value = 66;
+        if (freqSlider) freqSlider.value = freqToSlider(66);
+    } else if (src && src.includes('Cello_and_Childrens_Choir')) {
+        settings.frequency = 74;
+        if (frequencyInput) frequencyInput.value = 74;
+        if (freqSlider) freqSlider.value = freqToSlider(74);
+    } else if (src && src.includes('HARP_Promo_Video_Subtle_Audio_Layers')) {
+        settings.frequency = 74;
+        if (frequencyInput) frequencyInput.value = 74;
+        if (freqSlider) freqSlider.value = freqToSlider(74);
+    } else if (src && src.includes('Life in a Moment')) {
+        settings.frequency = 66;
+        if (frequencyInput) frequencyInput.value = 66;
+        if (freqSlider) freqSlider.value = freqToSlider(66);
+    } else if (src && src.includes("Shepard's Rise.mp3")) {
+        settings.frequency = 48;
+        if (frequencyInput) frequencyInput.value = 48;
+        if (freqSlider) freqSlider.value = freqToSlider(48);
+    } else if (src && src.includes('Bless Me Now')) {
+        settings.frequency = 53;
+        if (frequencyInput) frequencyInput.value = 53;
+        if (freqSlider) freqSlider.value = freqToSlider(53);
     }
 
     // Stop existing
@@ -2342,5 +2602,8 @@ canvas.addEventListener('touchcancel', () => {
 
 // Initialize
 resizeCanvas();
+
+// Add pulse animation to play button on first load
+playPauseBtn.classList.add('pulse');
 
 requestAnimationFrame(animate);

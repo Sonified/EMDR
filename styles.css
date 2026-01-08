@@ -64,11 +64,12 @@ html, body {
     width: 242px;
     max-height: calc(100vh - 100px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
     overflow-y: auto;
+    scrollbar-gutter: stable;
     transition: opacity 0.3s ease;
     z-index: 100;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 255, 255, 0.3) transparent;
+    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 }
 
 .settings::-webkit-scrollbar {
@@ -80,12 +81,12 @@ html, body {
 }
 
 .settings::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.15);
     border-radius: 3px;
 }
 
 .settings::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.5);
+    background: rgba(255, 255, 255, 0.25);
 }
 
 .settings.hidden {
@@ -105,14 +106,46 @@ html, body {
 }
 
 .setting-group {
-    margin-bottom: 14px;
+    margin-bottom: 10px;
+}
+
+.setting-section {
+    margin-left: -16px;
+    margin-right: -16px;
+    padding: 8px 16px 8px 16px;
+    margin-bottom: 8px;
+}
+
+.setting-section:first-child {
+    margin-top: -16px;
+}
+
+.setting-header {
+    margin: 0 0 12px 0;
+    padding-bottom: 4px;
+    border-bottom: 1px solid #555;
+}
+
+.setting-header h3 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 500;
+    color: #fff;
+    text-transform: uppercase;
+    letter-spacing: 1.1px;
 }
 
 .setting-group label {
     display: block;
-    margin-bottom: 6px;
+    margin-bottom: 2px;
     font-size: 14px;
-    color: #ccc;
+    color: #999;
+}
+
+.label-unit {
+    font-size: 0.85em;
+    opacity: 0.5;
+    font-weight: normal;
 }
 
 .setting-group input[type="number"] {
@@ -140,6 +173,47 @@ html, body {
     color: #fff;
     font-size: 14px;
     cursor: pointer;
+}
+
+.setting-group #musicSelect {
+    background: #444;
+}
+
+.setting-group .toggle-btn {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background: #2a2a2a;
+    color: #888;
+    font-size: 14px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s;
+}
+
+.setting-group .toggle-btn:hover {
+    background: #333;
+}
+
+.setting-group .toggle-btn[data-checked="true"] {
+    background: #3d6fa8;
+    border-color: #5080b8;
+    color: #fff;
+}
+
+.setting-group #audioEnabled[data-checked="true"] {
+    background: linear-gradient(135deg, #3d6fa8 0%, #8b4d9e 100%);
+    border-color: #6a5dad;
+}
+
+.setting-group #glowEnabled[data-checked="true"] {
+    background: linear-gradient(135deg, #5890d8 0%, #78b8f8 100%);
+    border-color: #70a8e8;
+}
+
+.setting-group .toggle-btn .toggle-state {
+    font-weight: 600;
 }
 
 .setting-group input[type="range"] {
@@ -184,7 +258,7 @@ html, body {
     border: 1px solid #555;
     border-radius: 6px;
     background: #333;
-    color: #fff;
+    color: #999;
     font-size: 12px;
     font-family: monospace;
 }
@@ -200,7 +274,7 @@ html, body {
     border: 1px solid #555;
     border-radius: 6px;
     background: #444;
-    color: #fff;
+    color: #999;
     font-size: 11px;
     cursor: pointer;
     flex-shrink: 0;
@@ -303,7 +377,7 @@ html, body {
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
     padding: 8px 0;
     scrollbar-width: auto;
-    scrollbar-color: rgba(255, 255, 255, 0.8) rgba(80, 80, 90, 0.5);
+    scrollbar-color: rgba(255, 255, 255, 0.3) rgba(80, 80, 90, 0.3);
 }
 
 .music-picker-dropdown::-webkit-scrollbar {
@@ -366,11 +440,33 @@ html, body {
     background: rgba(255, 255, 255, 0.3);
 }
 
+/* Pulse animation for play button on first load */
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(86, 97, 250, 0.7);
+        transform: scale(1);
+    }
+    70% {
+        box-shadow: 0 0 0 20px rgba(86, 97, 250, 0);
+        transform: scale(1.05);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(86, 97, 250, 0);
+        transform: scale(1);
+    }
+}
+
+.play-pause-btn.pulse {
+    animation: pulse 1.5s ease-out infinite;
+}
+
 .trail-options.hidden,
 .ripple-options.hidden,
+.trail-advanced-options.hidden,
 .reverb-options.hidden,
 .music-volume-control.hidden,
-.tone-options.hidden {
+.tone-options.hidden,
+.trail-show.hidden {
     display: none;
 }
 
