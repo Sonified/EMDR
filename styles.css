@@ -302,6 +302,29 @@ html, body {
     cursor: pointer;
 }
 
+.reset-settings-btn {
+    width: 100%;
+    margin-top: 16px;
+    padding: 10px;
+    border: 1px solid rgba(139, 69, 69, 0.4);
+    border-radius: 6px;
+    background: rgba(90, 40, 40, 0.3);
+    color: rgba(255, 150, 150, 0.7);
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.reset-settings-btn:hover {
+    background: rgba(120, 50, 50, 0.4);
+    border-color: rgba(180, 90, 90, 0.6);
+    color: rgba(255, 170, 170, 0.9);
+}
+
+.reset-settings-btn:active {
+    background: rgba(100, 45, 45, 0.5);
+}
+
 .audio-btn,
 .play-pause-btn {
     position: fixed;

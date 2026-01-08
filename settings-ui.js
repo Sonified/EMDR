@@ -147,6 +147,9 @@ function generateSettingsHTML() {
         html += '</div>';
     }
 
+    // Add reset button at the bottom
+    html += '<button type="button" class="reset-settings-btn" id="resetSettings">Reset All Settings</button>';
+
     return html;
 }
 

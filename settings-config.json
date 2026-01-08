@@ -87,8 +87,8 @@
     { "type": "toggle", "id": "audioEnabled", "label": "", "checked": true },
     { "type": "number", "id": "frequency", "label": "Frequency (Hz)", "min": 20, "max": 2000, "step": 0.1, "value": 110, "className": "tone-options" },
     { "type": "range", "id": "frequencySlider", "label": "Freq Slider", "min": 20, "max": 220, "step": 1, "value": 97, "className": "tone-options", "hideLabel": true },
-    { "type": "range", "id": "toneVolume", "label": "Tone Volume", "min": 0, "max": 100, "value": 30, "showValue": true, "suffix": "%", "className": "tone-options" },
-    { "type": "range", "id": "tonePan", "label": "Tone Pan Width", "min": 0, "max": 100, "value": 100, "showValue": true, "suffix": "%", "className": "tone-options" },
+    { "type": "range", "id": "toneVolume", "label": "Volume", "min": 0, "max": 100, "value": 30, "showValue": true, "suffix": "%", "className": "tone-options" },
+    { "type": "range", "id": "tonePan", "label": "Pan Width", "min": 0, "max": 100, "value": 100, "showValue": true, "suffix": "%", "className": "tone-options" },
     { "type": "header", "label": "Reverb" },
     { "type": "toggle", "id": "reverbEnabled", "label": "", "checked": false },
     { "type": "select", "id": "reverbType", "label": "Reverb Type", "className": "reverb-options hidden", "options": [

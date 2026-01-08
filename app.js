@@ -25,6 +25,66 @@ function getToggleStateText(buttonId, isEnabled) {
     return isEnabled ? 'On' : 'Off';
 }
 
+// SINGLE SOURCE OF TRUTH: Music track frequency mappings
+const MUSIC_FREQUENCY_MAP = {
+    'Music From The Sun': 65,
+    'Imagine With Me (Day Mix)': 97,
+    'Imagine With Me (Night Mix)': 57,
+    'Birth of the Evening Star': 56.75,
+    'Endless Now': 51,
+    'Synthesized Ocean': 40,
+    'Electric Cello Improv': 65.4,
+    'Re-Entry Music': 73.4,
+    'Eternal You': 73.4,
+    'Cello and Children\'s Choir': 92.5,
+    'HARP Promo': 110,
+    'Life in a Moment': 55,
+    'Shepard Rise (UM)': 110,
+    'Shepard\'s Rise (Interlochen)': 98,
+    'Lullaby for the Heart': 49,
+    'Hero\'s Journey': 58.27,
+    'Open Focus': 97,
+    'Mist': 58.27,
+    'Passages': 110,
+    'Speed of Thought': 97,
+    'Dream': 97,
+    'Cyberworld': 110,
+    'Bless Me Now': 73.4,
+    'Frozen Memories (DnB)': 55,
+    'Through the Storm': 48.99,
+    'Sam Brown Rmx': 73.4,
+    'New Year (JuZia)': 130.81,
+    'Total Praise (Remix)': 97,
+    'Holiday': 78
+};
+
+// Helper function to set frequency based on track name
+function setFrequencyForTrack(trackSrc, settings, frequencyInput, freqSlider) {
+    if (!trackSrc) return;
+
+    // Find matching track in frequency map
+    for (const [trackName, frequency] of Object.entries(MUSIC_FREQUENCY_MAP)) {
+        if (trackSrc.includes(trackName)) {
+            settings.frequency = frequency;
+            if (frequencyInput) frequencyInput.value = frequency;
+            if (freqSlider) freqSlider.value = freqToSlider(frequency);
+
+            // Special case: Birth of the Evening Star enables audio
+            if (trackName === 'Birth of the Evening Star') {
+                settings.audioEnabled = true;
+                const audioEnabledInput = document.getElementById('audioEnabled');
+                const audioBtn = document.getElementById('audioBtn');
+                if (audioEnabledInput) {
+                    audioEnabledInput.dataset.checked = 'true';
+                    audioEnabledInput.querySelector('.toggle-state').textContent = getToggleStateText('audioEnabled', true);
+                }
+                if (audioBtn) audioBtn.textContent = '🔊';
+            }
+            return;
+        }
+    }
+}
+
 // Dynamic favicon
 function updateFavicon(color) {
     const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'>
@@ -369,13 +429,13 @@ const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/
 const defaultSettings = {
     cyclesPerMinute: 40,
     motionType: 'sine',
-    ballSize: isMobile ? 30 : 10,
+    ballSize: isMobile ? 30 : 25,
     ballColor: '#5661fa',
     ballStyle: 'sphere',
     glowEnabled: false,
     trailStyle: 'ripple',
     trailLength: 15,
-    trailOpacity: 15,
+    trailOpacity: 10,
     bgColor: '#03040c',
     audioEnabled: true,
     frequency: 110,
@@ -418,8 +478,42 @@ function saveSettings() {
 
 // Clear saved settings (reset to defaults)
 function resetSettings() {
+    // Clear localStorage (both settings and music selection)
     localStorage.removeItem('emdr_settings');
-    location.reload();
+    localStorage.removeItem('emdr_selectedMusic');
+
+    // Stop any playing music
+    stopMusicPlayback();
+
+    // Reset settingsData object to defaults
+    Object.assign(settingsData, defaultSettings);
+
+    // Re-sync all UI elements with default settings
+    // attachSettingsEventListeners syncs all UI values from the settings object
+    if (window.attachSettingsEventListeners) {
+        window.attachSettingsEventListeners();
+    }
+
+    // Reload the default music track and set its frequency
+    const DEFAULT_TRACK = 'audio_files/4_Electronic/Alexander - Imagine With Me (Day Mix).mp3';
+    if (typeof loadMusicTrack === 'function') {
+        loadMusicTrack(DEFAULT_TRACK);
+    }
+
+    // Update music picker UI to show default track
+    const musicPickerLabel = document.querySelector('.music-picker-label');
+    if (musicPickerLabel) {
+        musicPickerLabel.textContent = 'Music: Imagine With Me (Day Mix)';
+    }
+
+    // Update selected track in dropdown
+    const tracks = document.querySelectorAll('.music-picker-dropdown .track');
+    tracks.forEach(track => {
+        track.classList.remove('selected');
+        if (track.dataset.value === DEFAULT_TRACK) {
+            track.classList.add('selected');
+        }
+    });
 }
 
 // State (loaded from localStorage or defaults)
@@ -1529,7 +1623,7 @@ function showSettings() {
     if (!pickerIsOpen && !inputFocused) {
         mouseTimeout = setTimeout(() => {
             settingsPanel.classList.add('hidden');
-        }, 2000);
+        }, 1500);
     }
 }
 
@@ -1843,124 +1937,8 @@ function attachSettingsEventListeners() {
     musicSelectEl.addEventListener('change', (e) => {
         const src = e.target.value;
 
-        // Set frequency based on track
-        if (src.includes('Music From The Sun')) {
-            settings.frequency = 65;
-            frequencyInput.value = 65;
-            freqSlider.value = freqToSlider(65);
-        } else if (src.includes('Imagine With Me (Day Mix)')) {
-            settings.frequency = 57;
-            frequencyInput.value = 57;
-            freqSlider.value = freqToSlider(57);
-        } else if (src.includes('Imagine With Me')) {
-            settings.frequency = 97;
-            frequencyInput.value = 97;
-            freqSlider.value = freqToSlider(97);
-        } else if (src.includes('Birth of the Evening Star')) {
-            settings.frequency = 56.75;
-            settings.audioEnabled = true;
-            frequencyInput.value = 56.75;
-            freqSlider.value = freqToSlider(56.75);
-            audioEnabledInput.dataset.checked = 'true';
-            audioEnabledInput.querySelector('.toggle-state').textContent = getToggleStateText('audioEnabled', true);
-            audioBtn.textContent = '🔊';
-        } else if (src.includes('Endless Now')) {
-            settings.frequency = 51;
-            frequencyInput.value = 51;
-            freqSlider.value = freqToSlider(51);
-        } else if (src.includes('Synthesized Ocean')) {
-            settings.frequency = 40;
-            frequencyInput.value = 40;
-            freqSlider.value = freqToSlider(40);
-        } else if (src.includes('Electric Cello Improv')) {
-            settings.frequency = 66;
-            frequencyInput.value = 66;
-            freqSlider.value = freqToSlider(66);
-        } else if (src.includes('Re_Entry_Music')) {
-            settings.frequency = 66;
-            frequencyInput.value = 66;
-            freqSlider.value = freqToSlider(66);
-        } else if (src.includes('Eternal You')) {
-            settings.frequency = 66;
-            frequencyInput.value = 66;
-            freqSlider.value = freqToSlider(66);
-        } else if (src.includes('Cello_and_Childrens_Choir')) {
-            settings.frequency = 74;
-            frequencyInput.value = 74;
-            freqSlider.value = freqToSlider(74);
-        } else if (src.includes('HARP_Promo_Video_Subtle_Audio_Layers')) {
-            settings.frequency = 74;
-            frequencyInput.value = 74;
-            freqSlider.value = freqToSlider(74);
-        } else if (src.includes('Life in a Moment')) {
-            settings.frequency = 66;
-            frequencyInput.value = 66;
-            freqSlider.value = freqToSlider(66);
-        } else if (src.includes("Shepard's Rise") || src.includes("Shepards_Rise")) {
-            settings.frequency = 48;
-            frequencyInput.value = 48;
-            freqSlider.value = freqToSlider(48);
-        } else if (src.includes('Bless Me Now')) {
-            settings.frequency = 53;
-            frequencyInput.value = 53;
-            freqSlider.value = freqToSlider(53);
-        } else if (src.includes('All Objects Foreground')) {
-            settings.frequency = 87;
-            frequencyInput.value = 87;
-            freqSlider.value = freqToSlider(87);
-        } else if (src.includes('Mist')) {
-            settings.frequency = 74;
-            frequencyInput.value = 74;
-            freqSlider.value = freqToSlider(74);
-        } else if (src.includes('passages')) {
-            settings.frequency = 75;
-            frequencyInput.value = 75;
-            freqSlider.value = freqToSlider(75);
-        } else if (src.includes('Speed of Thought')) {
-            settings.frequency = 68;
-            frequencyInput.value = 68;
-            freqSlider.value = freqToSlider(68);
-        } else if (src.includes('Dream')) {
-            settings.frequency = 65;
-            frequencyInput.value = 65;
-            freqSlider.value = freqToSlider(65);
-        } else if (src.includes('Cyberworld')) {
-            settings.frequency = 67;
-            frequencyInput.value = 67;
-            freqSlider.value = freqToSlider(67);
-        } else if (src.includes("Hero's Journey")) {
-            settings.frequency = 65;
-            frequencyInput.value = 65;
-            freqSlider.value = freqToSlider(65);
-        } else if (src.includes('Lullaby for the Heart')) {
-            settings.frequency = 71.5;
-            frequencyInput.value = 71.5;
-            freqSlider.value = freqToSlider(71.5);
-        } else if (src.includes('Frozen Memories')) {
-            settings.frequency = 40;
-            frequencyInput.value = 40;
-            freqSlider.value = freqToSlider(40);
-        } else if (src.includes('Through the Storm')) {
-            settings.frequency = 68;
-            frequencyInput.value = 68;
-            freqSlider.value = freqToSlider(68);
-        } else if (src.includes('Sam Brown Rmx')) {
-            settings.frequency = 50;
-            frequencyInput.value = 50;
-            freqSlider.value = freqToSlider(50);
-        } else if (src.includes('New Year')) {
-            settings.frequency = 80;
-            frequencyInput.value = 80;
-            freqSlider.value = freqToSlider(80);
-        } else if (src.includes('Total Praise')) {
-            settings.frequency = 49;
-            frequencyInput.value = 49;
-            freqSlider.value = freqToSlider(49);
-        } else if (src.includes('Holiday')) {
-            settings.frequency = 78;
-            frequencyInput.value = 78;
-            freqSlider.value = freqToSlider(78);
-        }
+        // Set frequency based on track using centralized map
+        setFrequencyForTrack(src, settings, frequencyInput, freqSlider);
 
         // Update music picker label
         const tracks = musicPickerDropdown.querySelectorAll('.track');
@@ -2137,6 +2115,16 @@ function attachSettingsEventListeners() {
             });
         });
     });
+
+    // Reset settings button handler
+    const resetBtn = document.getElementById('resetSettings');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+            if (confirm('Reset all settings to defaults?')) {
+                resetSettings();
+            }
+        });
+    }
 
     // Sync ALL UI elements with current settings values (from localStorage)
     speedInput.value = settings.cyclesPerMinute;
@@ -2447,67 +2435,9 @@ document.addEventListener('click', (e) => {
 
 // Helper to load music track directly
 function loadMusicTrack(src) {
-    // Set frequency based on track
+    // Set frequency based on track using centralized map
     const freqSlider = document.getElementById('frequencySlider');
-    if (src && src.includes('Music From The Sun')) {
-        settings.frequency = 65;
-        if (frequencyInput) frequencyInput.value = 65;
-        if (freqSlider) freqSlider.value = freqToSlider(65);
-    } else if (src && src.includes('Imagine With Me')) {
-        settings.frequency = 97;
-        if (frequencyInput) frequencyInput.value = 97;
-        if (freqSlider) freqSlider.value = freqToSlider(97);
-    } else if (src && src.includes('Birth of the Evening Star')) {
-        settings.frequency = 56.75;
-        settings.audioEnabled = true;
-        if (frequencyInput) frequencyInput.value = 56.75;
-        if (freqSlider) freqSlider.value = freqToSlider(56.75);
-        if (audioEnabledInput) {
-            audioEnabledInput.dataset.checked = 'true';
-            audioEnabledInput.querySelector('.toggle-state').textContent = getToggleStateText('audioEnabled', true);
-        }
-        audioBtn.textContent = '🔊';
-    } else if (src && src.includes('Endless Now')) {
-        settings.frequency = 51;
-        if (frequencyInput) frequencyInput.value = 51;
-        if (freqSlider) freqSlider.value = freqToSlider(51);
-    } else if (src && src.includes('Synthesized Ocean')) {
-        settings.frequency = 40;
-        if (frequencyInput) frequencyInput.value = 40;
-        if (freqSlider) freqSlider.value = freqToSlider(40);
-    } else if (src && src.includes('Electric Cello Improv')) {
-        settings.frequency = 66;
-        if (frequencyInput) frequencyInput.value = 66;
-        if (freqSlider) freqSlider.value = freqToSlider(66);
-    } else if (src && src.includes('Re_Entry_Music')) {
-        settings.frequency = 66;
-        if (frequencyInput) frequencyInput.value = 66;
-        if (freqSlider) freqSlider.value = freqToSlider(66);
-    } else if (src && src.includes('Eternal You')) {
-        settings.frequency = 66;
-        if (frequencyInput) frequencyInput.value = 66;
-        if (freqSlider) freqSlider.value = freqToSlider(66);
-    } else if (src && src.includes('Cello_and_Childrens_Choir')) {
-        settings.frequency = 74;
-        if (frequencyInput) frequencyInput.value = 74;
-        if (freqSlider) freqSlider.value = freqToSlider(74);
-    } else if (src && src.includes('HARP_Promo_Video_Subtle_Audio_Layers')) {
-        settings.frequency = 74;
-        if (frequencyInput) frequencyInput.value = 74;
-        if (freqSlider) freqSlider.value = freqToSlider(74);
-    } else if (src && src.includes('Life in a Moment')) {
-        settings.frequency = 66;
-        if (frequencyInput) frequencyInput.value = 66;
-        if (freqSlider) freqSlider.value = freqToSlider(66);
-    } else if (src && src.includes("Shepard's Rise.mp3")) {
-        settings.frequency = 48;
-        if (frequencyInput) frequencyInput.value = 48;
-        if (freqSlider) freqSlider.value = freqToSlider(48);
-    } else if (src && src.includes('Bless Me Now')) {
-        settings.frequency = 53;
-        if (frequencyInput) frequencyInput.value = 53;
-        if (freqSlider) freqSlider.value = freqToSlider(53);
-    }
+    setFrequencyForTrack(src, settings, frequencyInput, freqSlider);
 
     // Stop existing
     stopMusicPlayback();
