@@ -128,7 +128,9 @@ function generateSettingsHTML() {
                 for (const [group, tracks] of Object.entries(musicTracks)) {
                     musicHtml += `<optgroup label="${group}">`;
                     for (const track of tracks) {
-                        musicHtml += `<option value="${track.value}">${track.label}</option>`;
+                        if (!track.disabled) {
+                            musicHtml += `<option value="${track.value}">${track.label}</option>`;
+                        }
                     }
                     musicHtml += '</optgroup>';
                 }

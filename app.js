@@ -2370,8 +2370,10 @@ fetch('settings-config.json')
         for (const category in tracks) {
             html += `<div class="category">${category}</div>`;
             for (const track of tracks[category]) {
-                const isSelected = track.value === trackToLoad;
-                html += `<div class="track${isSelected ? ' selected' : ''}" data-value="${track.value}" data-label="${track.label}">${track.label}</div>`;
+                if (!track.disabled) {
+                    const isSelected = track.value === trackToLoad;
+                    html += `<div class="track${isSelected ? ' selected' : ''}" data-value="${track.value}" data-label="${track.label}">${track.label}</div>`;
+                }
             }
         }
         musicPickerDropdown.innerHTML = html;
