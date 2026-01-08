@@ -829,6 +829,7 @@ let prevBallY = null;
 
 // Track user drag for creating waves
 let isUserDragging = false;
+let justFinishedDragging = false;
 let userDragX = 0;
 let userDragY = 0;
 
@@ -2247,7 +2248,7 @@ window.attachSettingsEventListeners = attachSettingsEventListeners;
 
 // Mouse movement shows settings (unless dragging to create waves)
 document.addEventListener('mousemove', () => {
-    if (!isUserDragging) {
+    if (!isUserDragging && !justFinishedDragging) {
         showSettings();
     }
 });
@@ -2511,9 +2512,21 @@ canvas.addEventListener('mousemove', (e) => {
 
 canvas.addEventListener('mouseup', () => {
     isUserDragging = false;
+    // Prevent settings from showing immediately after drag ends
+    justFinishedDragging = true;
+    setTimeout(() => {
+        justFinishedDragging = false;
+    }, 200);
 });
 
 canvas.addEventListener('mouseleave', () => {
+    if (isUserDragging) {
+        // Prevent settings from showing immediately after drag ends
+        justFinishedDragging = true;
+        setTimeout(() => {
+            justFinishedDragging = false;
+        }, 200);
+    }
     isUserDragging = false;
 });
 
