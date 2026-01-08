@@ -2245,8 +2245,12 @@ function attachSettingsEventListeners() {
 // Expose globally for settings-ui.js to call after UI reload
 window.attachSettingsEventListeners = attachSettingsEventListeners;
 
-// Mouse movement shows settings
-document.addEventListener('mousemove', showSettings);
+// Mouse movement shows settings (unless dragging to create waves)
+document.addEventListener('mousemove', () => {
+    if (!isUserDragging) {
+        showSettings();
+    }
+});
 
 // Scrolling/dragging in settings resets fade timer
 settingsPanel.addEventListener('scroll', showSettings);
