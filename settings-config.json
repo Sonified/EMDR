@@ -1,20 +1,20 @@
 {
   "musicTracks": {
-    "Ambient": [
-      { "value": "audio_files/1_Ambient/18 Music From The Sun.mp3", "label": "Music From The Sun" },
-      { "value": "audio_files/1_Ambient/18. Synthesized Ocean (Loop).mp3", "label": "Synthesized Ocean" },
-      { "value": "audio_files/1_Ambient/Birth of the Evening Star.mp3", "label": "Birth of the Evening Star" },
-      { "value": "audio_files/1_Ambient/Endless Now (v1.0).mp3", "label": "Endless Now" },
-      { "value": "audio_files/1_Ambient/MiND Electric Cello Improv.mp3", "label": "Electric Cello Improv" },
-      { "value": "audio_files/1_Ambient/Re_Entry_Music_1.0.mp3", "label": "Re-Entry Music" }
-    ],
     "Acoustic": [
-      { "value": "audio_files/2_Acoustic/Alexander - Eternal You.mp3", "label": "Eternal You" },
-      { "value": "audio_files/2_Acoustic/Cello_and_Childrens_Choir_Fun_1.9.mp3", "label": "Cello and Children's Choir" },
-      { "value": "audio_files/2_Acoustic/HARP_Promo_Video_Subtle_Audio_Layers.mp3", "label": "HARP Promo (Subtle Layers)" },
-      { "value": "audio_files/2_Acoustic/Life in a Moment.mp3", "label": "Life in a Moment" },
-      { "value": "audio_files/2_Acoustic/Shepard's Rise.mp3", "label": "Shepard Rise (UM)" },
-      { "value": "audio_files/2_Acoustic/Shepards_Rise_Interlochen.mp3", "label": "Shepard's Rise (Interlochen)" }
+      { "value": "audio_files/1_Acoustic/Shepards_Rise_Interlochen.mp3", "label": "Shepard's Rise (Interlochen)" },
+      { "value": "audio_files/1_Acoustic/Shepard's Rise.mp3", "label": "Shepard Rise (UM)" },
+      { "value": "audio_files/1_Acoustic/Life in a Moment.mp3", "label": "Life in a Moment" },
+      { "value": "audio_files/1_Acoustic/HARP_Promo_Video_Subtle_Audio_Layers.mp3", "label": "HARP Promo (Subtle Layers)" },
+      { "value": "audio_files/1_Acoustic/Cello_and_Childrens_Choir_Fun_1.9.mp3", "label": "Cello and Children's Choir" },
+      { "value": "audio_files/1_Acoustic/Alexander - Eternal You.mp3", "label": "Eternal You" }
+    ],
+    "Ambient": [
+      { "value": "audio_files/2_Ambient/18 Music From The Sun.mp3", "label": "Music From The Sun" },
+      { "value": "audio_files/2_Ambient/18. Synthesized Ocean (Loop).mp3", "label": "Synthesized Ocean" },
+      { "value": "audio_files/2_Ambient/Birth of the Evening Star.mp3", "label": "Birth of the Evening Star" },
+      { "value": "audio_files/2_Ambient/Endless Now (v1.0).mp3", "label": "Endless Now" },
+      { "value": "audio_files/2_Ambient/MiND Electric Cello Improv.mp3", "label": "Electric Cello Improv" },
+      { "value": "audio_files/2_Ambient/Re_Entry_Music_1.0.mp3", "label": "Re-Entry Music" }
     ],
     "Paced Breathing": [
       { "value": "audio_files/3_Paced_Breathing/Lullaby for the Heart.mp3", "label": "Lullaby for the Heart" },
