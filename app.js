@@ -2129,10 +2129,11 @@ function attachSettingsEventListeners() {
     // Reset settings button handler
     const resetBtn = document.getElementById('resetSettings');
     if (resetBtn) {
-        resetBtn.addEventListener('click', () => {
+        resetBtn.addEventListener('click', (e) => {
             if (confirm('Reset all settings to defaults?')) {
                 resetSettings();
             }
+            e.currentTarget.blur();
         });
     }
 
@@ -2486,6 +2487,8 @@ function loadMusicTrack(src) {
 // Canvas click/drag to create waves (only in ripple mode)
 canvas.addEventListener('mousedown', (e) => {
     if (settings.trailStyle !== 'ripple') return;
+    // Ignore right-clicks and control/command-clicks
+    if (e.button !== 0 || e.ctrlKey || e.metaKey) return;
     isUserDragging = true;
     userDragX = e.clientX;
     userDragY = e.clientY;
