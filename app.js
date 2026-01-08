@@ -2274,7 +2274,11 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // Toggle settings panel visibility
+    // Toggle settings panel visibility (unless just finished dragging waves)
+    if (justFinishedDragging) {
+        return;
+    }
+
     if (settingsPanel.classList.contains('hidden')) {
         showSettings();
     } else {
