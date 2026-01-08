@@ -31,7 +31,7 @@ const MUSIC_FREQUENCY_MAP = {
     'Imagine With Me (Day Mix)': 97,
     'Imagine With Me': 57,
     'Birth of the Evening Star': 56.75,
-    'Endless Now': 51,
+    // 'Endless Now': 51,  // Removed from UI: 71MB file too large for Web Audio API decodeAudioData (38min @ 256kbps causes browser memory limits)
     'Synthesized Ocean': 40,
     'Electric Cello Improv': 66,
     'Re_Entry_Music': 66,
