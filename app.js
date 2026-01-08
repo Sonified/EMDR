@@ -429,7 +429,7 @@ const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/
 const defaultSettings = {
     cyclesPerMinute: 40,
     motionType: 'sine',
-    ballSize: isMobile ? 30 : 25,
+    ballSize: isMobile ? 18 : 25,
     ballColor: '#5661fa',
     ballStyle: 'sphere',
     glowEnabled: false,
