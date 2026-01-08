@@ -1629,6 +1629,14 @@ function showSettings() {
     }
 }
 
+// Reset button click handler (defined once to allow removeEventListener)
+function handleResetClick(e) {
+    if (confirm('Reset all settings to defaults?')) {
+        resetSettings();
+    }
+    e.currentTarget.blur();
+}
+
 // Attach all settings event listeners (called after UI generation/reload)
 function attachSettingsEventListeners() {
     // Refresh element references
@@ -2129,12 +2137,9 @@ function attachSettingsEventListeners() {
     // Reset settings button handler
     const resetBtn = document.getElementById('resetSettings');
     if (resetBtn) {
-        resetBtn.addEventListener('click', (e) => {
-            if (confirm('Reset all settings to defaults?')) {
-                resetSettings();
-            }
-            e.currentTarget.blur();
-        });
+        // Remove old listener if it exists, then add new one
+        resetBtn.removeEventListener('click', handleResetClick);
+        resetBtn.addEventListener('click', handleResetClick);
     }
 
     // Sync ALL UI elements with current settings values (from localStorage)
