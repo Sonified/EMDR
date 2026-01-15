@@ -2178,6 +2178,10 @@ function attachSettingsEventListeners() {
     document.getElementById('waveSourceSizeValue').textContent = settings.waveSourceSize.toFixed(1);
     document.getElementById('waveGridSize').value = settings.waveGridSize;
 
+    // Music select (sync to default or saved track)
+    const savedMusicTrack = localStorage.getItem('emdr_selectedMusic');
+    musicSelectEl.value = savedMusicTrack || DEFAULT_TRACK;
+
     // Audio options
     audioEnabledInput.dataset.checked = settings.audioEnabled.toString();
     audioEnabledInput.querySelector('.toggle-state').textContent = getToggleStateText('audioEnabled', settings.audioEnabled);
