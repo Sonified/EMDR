@@ -497,7 +497,7 @@ function resetSettings() {
     }
 
     // Reload the default music track and set its frequency
-    const DEFAULT_TRACK = 'audio_files/4_Electronic/Alexander - Imagine With Me (Day Mix).mp3';
+    const DEFAULT_TRACK = 'audio_files/1_Acoustic/Shepards_Rise_Interlochen.mp3';
     if (typeof loadMusicTrack === 'function') {
         loadMusicTrack(DEFAULT_TRACK);
     }
@@ -505,7 +505,7 @@ function resetSettings() {
     // Update music picker UI to show default track
     const musicPickerLabel = document.querySelector('.music-picker-label');
     if (musicPickerLabel) {
-        musicPickerLabel.textContent = 'Music: Imagine With Me (Day Mix)';
+        musicPickerLabel.textContent = "Music: Shepard's Rise (Interlochen)";
     }
 
     // Update selected track in dropdown
@@ -2353,8 +2353,8 @@ const musicPickerDropdown = document.getElementById('musicPickerDropdown');
 let selectedMusicValue = '';
 
 // Load music tracks and populate dropdown
-const DEFAULT_TRACK = 'audio_files/4_Electronic/Alexander - Imagine With Me (Day Mix).mp3';
-const DEFAULT_TRACK_LABEL = 'Imagine With Me (Day Mix)';
+const DEFAULT_TRACK = 'audio_files/1_Acoustic/Shepards_Rise_Interlochen.mp3';
+const DEFAULT_TRACK_LABEL = "Shepard's Rise (Interlochen)";
 
 fetch('settings-config.json')
     .then(r => r.json())
